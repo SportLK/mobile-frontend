@@ -1,4 +1,15 @@
 {
-  "name": "mobile_frontend",
-  "displayName": "mobile_frontend"
+  "expo": {
+    "name": "mobile_frontend",
+    "slug": "mobile_frontend",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "web": {
+      "bundler": "metro"
+    }
+  }
 }
+
+
