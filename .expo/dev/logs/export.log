@@ -1,0 +1,17 @@
+{"_e":"root:init","_t":1791286751257,"format":"v0-jsonl","version":"57.0.27"}
+{"_e":"env:mode","_t":1791286758019,"nodeEnv":"production","babelEnv":"production","mode":"production"}
+{"_e":"env:load","_t":1791286758049,"mode":"production","files":[],"env":{}}
+{"_e":"devserver:start","_t":1791286758215,"mode":"production","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":true}
+{"_e":"metro:config","_t":1791286770480,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":true,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:instantiate","_t":1791286776651,"atlas":false,"workers":8,"host":null,"port":null}
+{"_e":"metro:bundling:started","_t":1791286778371,"id":"1","platform":"web","environment":null,"entry":"index.js"}
+{"_e":"root:init","_t":1791287534158,"format":"v0-jsonl","version":"57.0.27"}
+{"_e":"env:mode","_t":1791287542917,"nodeEnv":"production","babelEnv":"production","mode":"production"}
+{"_e":"root:init","_t":1791287655561,"format":"v0-jsonl","version":"57.0.27"}
+{"_e":"env:mode","_t":1791287657383,"nodeEnv":"production","babelEnv":"production","mode":"production"}
+{"_e":"env:load","_t":1791287657398,"mode":"production","files":[],"env":{}}
+{"_e":"devserver:start","_t":1791287657568,"mode":"production","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":true}
+{"_e":"metro:config","_t":1791287661075,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":true,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:instantiate","_t":1791287670289,"atlas":false,"workers":8,"host":null,"port":null}
+{"_e":"metro:bundling:started","_t":1791287689402,"id":"1","platform":"web","environment":null,"entry":"index.js"}
+{"_e":"metro:bundling:done","_t":1791287744617,"id":"1","total":212,"ms":55214.668}
