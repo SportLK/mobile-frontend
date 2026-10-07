@@ -29,6 +29,14 @@ interface TeamContextType {
   changeMemberRole: (teamId: string, memberId: string, newRole: 'Captain' | 'Vice-Captain' | 'Player') => void;
   issueChallenge: (defenderTeamId: string, sport: SportType, date: string, venue: string, message: string) => void;
   respondToChallenge: (challengeId: string, accept: boolean) => void;
+  updateTeam: (teamId: string, data: Partial<{
+    name: string;
+    district: string;
+    description: string;
+    contactInfo: string;
+    maxPlayers: number;
+    logo: string;
+  }>) => void;
   leaveTeam: (teamId: string) => void;
   getTeamById: (teamId: string) => Team | undefined;
   getTeamMembers: (teamId: string) => TeamMember[];
@@ -258,6 +266,27 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setChallenges(prev => prev.map(c => c.id === challengeId ? { ...c, status: accept ? 'accepted' : 'declined' } : c));
   };
 
+  const updateTeam = (teamId: string, data: Partial<{
+    name: string;
+    district: string;
+    description: string;
+    contactInfo: string;
+    maxPlayers: number;
+    logo: string;
+  }>) => {
+    setTeams(prev => prev.map(t => {
+      if (t.id !== teamId) return t;
+      const updatedMax = data.maxPlayers !== undefined ? Number(data.maxPlayers) : t.maxPlayers;
+      const updatedSlots = Math.max(0, updatedMax - t.currentMemberCount);
+      return {
+        ...t,
+        ...data,
+        maxPlayers: updatedMax,
+        slotsAvailable: updatedSlots,
+      };
+    }));
+  };
+
   const leaveTeam = (teamId: string) => {
     setMembers(prev => ({
       ...prev,
@@ -290,6 +319,7 @@ export const TeamProvider: React.FC<{ children: React.ReactNode }> = ({ children
         changeMemberRole,
         issueChallenge,
         respondToChallenge,
+        updateTeam,
         leaveTeam,
         getTeamById,
         getTeamMembers,
