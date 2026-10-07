@@ -35,6 +35,7 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
     issueChallenge,
     respondToChallenge,
     requestToJoinTeam,
+    updateTeam,
     myTeams,
   } = useTeamContext();
 
@@ -52,6 +53,13 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
   const [challengeDate, setChallengeDate] = useState('Oct 20, 2026 at 4:00 PM');
   const [challengeVenue, setChallengeVenue] = useState('SSC Grounds, Colombo');
   const [challengeMsg, setChallengeMsg] = useState('Are you ready for a friendly weekend match?');
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDistrict, setEditDistrict] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editContact, setEditContact] = useState('');
+  const [editMaxPlayers, setEditMaxPlayers] = useState('20');
 
   if (!team) {
     return (
@@ -112,6 +120,31 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
     issueChallenge(teamId, team.sport, challengeDate, challengeVenue, challengeMsg);
     setChallengeModalVisible(false);
     Alert.alert('Challenge Issued! ⚡', `Challenge sent to ${team.name}!`);
+  };
+
+  const handleOpenEditModal = () => {
+    setEditName(team.name);
+    setEditDistrict(team.district);
+    setEditDesc(team.description);
+    setEditContact(team.contactInfo);
+    setEditMaxPlayers(String(team.maxPlayers));
+    setEditModalVisible(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editName.trim()) {
+      Alert.alert('Validation Error', 'Team name cannot be empty.');
+      return;
+    }
+    updateTeam(teamId, {
+      name: editName.trim(),
+      district: editDistrict.trim(),
+      description: editDesc.trim(),
+      contactInfo: editContact.trim(),
+      maxPlayers: Number(editMaxPlayers) || team.maxPlayers,
+    });
+    setEditModalVisible(false);
+    Alert.alert('Success 🎉', 'Team details updated successfully!');
   };
 
   return (
@@ -206,6 +239,15 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
 
             <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Contact Details</Text>
             <Text style={styles.infoText}>📞 {team.contactInfo}</Text>
+
+            {isCaptain && (
+              <TouchableOpacity
+                style={styles.primaryActionButton}
+                onPress={handleOpenEditModal}
+              >
+                <Text style={styles.primaryActionText}>✏️ Edit Team Details</Text>
+              </TouchableOpacity>
+            )}
 
             {!isMember && (
               <TouchableOpacity
@@ -430,6 +472,55 @@ export const TeamDetailScreen: React.FC<TeamDetailScreenProps> = ({
               </TouchableOpacity>
               <TouchableOpacity style={styles.modalSubmitBtn} onPress={handleIssueChallengeSubmit}>
                 <Text style={styles.modalSubmitText}>Send Challenge ⚡</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* EDIT TEAM DETAILS MODAL */}
+      <Modal visible={editModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Team Details</Text>
+            <Text style={styles.modalLabel}>Team Name</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editName}
+              onChangeText={setEditName}
+            />
+            <Text style={styles.modalLabel}>District / City</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editDistrict}
+              onChangeText={setEditDistrict}
+            />
+            <Text style={styles.modalLabel}>Description</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editDesc}
+              onChangeText={setEditDesc}
+              multiline
+            />
+            <Text style={styles.modalLabel}>Contact Info</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editContact}
+              onChangeText={setEditContact}
+            />
+            <Text style={styles.modalLabel}>Max Players</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={editMaxPlayers}
+              onChangeText={setEditMaxPlayers}
+              keyboardType="number-pad"
+            />
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setEditModalVisible(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSubmitBtn} onPress={handleSaveEdit}>
+                <Text style={styles.modalSubmitText}>Save Changes</Text>
               </TouchableOpacity>
             </View>
           </View>
