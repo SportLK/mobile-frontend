@@ -1,44 +1,44 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import React, { useState } from 'react';
 import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+  StatusBar,
+  StyleSheet,
+  useColorScheme,
+  SafeAreaView,
+} from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { VenuesScreen } from './src/screens/VenuesScreen';
+import { VenueDetailsScreen } from './src/screens/VenueDetailsScreen';
+import { Venue } from './src/types/venue.types';
+import { Colors } from './src/theme/colors';
 
-function App() {
+function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
+  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <StatusBar
+        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
+        
+      />
+      <SafeAreaView style={styles.safeArea}>
+        {selectedVenue ? (
+          <VenueDetailsScreen
+            venue={selectedVenue}
+            onBack={() => setSelectedVenue(null)}
+          />
+        ) : (
+          <VenuesScreen onSelectVenue={(venue) => setSelectedVenue(venue)} />
+        )}
+      </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
+    backgroundColor: Colors.background,
   },
 });
 
