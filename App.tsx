@@ -13,11 +13,12 @@ import { VenuesScreen } from './src/screens/VenuesScreen';
 import { VenueDetailsScreen } from './src/screens/VenueDetailsScreen';
 import { MatchesScreen } from './src/screens/MatchesScreen';
 import { LiveMatchScreen } from './src/screens/LiveMatchScreen';
+import { StatisticsScreen } from './src/screens/StatisticsScreen';
 import { Venue } from './src/types/venue.types';
 import { Match } from './src/types/match.types';
 import { Colors } from './src/theme/colors';
 
-type Tab = 'venues' | 'matches' | 'live';
+type Tab = 'matches' | 'live' | 'venues' | 'stats';
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
@@ -45,6 +46,8 @@ function App(): React.JSX.Element {
             />
           ) : currentTab === 'matches' ? (
             <MatchesScreen onSelectMatch={handleSelectMatch} />
+          ) : currentTab === 'stats' ? (
+            <StatisticsScreen />
           ) : selectedVenue ? (
             <VenueDetailsScreen
               venue={selectedVenue}
@@ -79,7 +82,7 @@ function App(): React.JSX.Element {
           >
             <Text style={styles.navIcon}>🔴</Text>
             <Text style={[styles.navLabel, currentTab === 'live' && styles.navLabelActive]}>
-              Live Match
+              Live
             </Text>
           </TouchableOpacity>
 
@@ -93,6 +96,19 @@ function App(): React.JSX.Element {
             <Text style={styles.navIcon}>🏟️</Text>
             <Text style={[styles.navLabel, currentTab === 'venues' && styles.navLabelActive]}>
               Venues
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.navItem, currentTab === 'stats' && styles.navItemActive]}
+            onPress={() => {
+              setCurrentTab('stats');
+              setSelectedVenue(null);
+            }}
+          >
+            <Text style={styles.navIcon}>📊</Text>
+            <Text style={[styles.navLabel, currentTab === 'stats' && styles.navLabelActive]}>
+              Stats
             </Text>
           </TouchableOpacity>
         </View>
@@ -115,7 +131,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     justifyContent: 'space-around',
     alignItems: 'center',
   },
@@ -123,7 +139,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     borderRadius: 12,
   },
   navItemActive: {
