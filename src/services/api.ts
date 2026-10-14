@@ -7,6 +7,12 @@ export const API_BASE_URL = Platform.select({
   default: 'http://localhost:3000/api/v1',
 });
 
+export const WS_BASE_URL = Platform.select({
+  android: 'http://10.0.2.2:3000',
+  ios: 'http://localhost:3000',
+  default: 'http://localhost:3000',
+});
+
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   
