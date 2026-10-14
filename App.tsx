@@ -11,16 +11,24 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { VenuesScreen } from './src/screens/VenuesScreen';
 import { VenueDetailsScreen } from './src/screens/VenueDetailsScreen';
+import { MatchesScreen } from './src/screens/MatchesScreen';
 import { LiveMatchScreen } from './src/screens/LiveMatchScreen';
 import { Venue } from './src/types/venue.types';
+import { Match } from './src/types/match.types';
 import { Colors } from './src/theme/colors';
 
-type Tab = 'venues' | 'live';
+type Tab = 'venues' | 'matches' | 'live';
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
-  const [currentTab, setCurrentTab] = useState<Tab>('live');
+  const [currentTab, setCurrentTab] = useState<Tab>('matches');
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+
+  const handleSelectMatch = (match: Match) => {
+    setSelectedMatch(match);
+    setCurrentTab('live');
+  };
 
   return (
     <SafeAreaProvider>
@@ -29,7 +37,14 @@ function App(): React.JSX.Element {
         {/* Main Content View */}
         <View style={styles.content}>
           {currentTab === 'live' ? (
-            <LiveMatchScreen />
+            <LiveMatchScreen
+              matchId={selectedMatch?.id}
+              onBack={() => {
+                setCurrentTab('matches');
+              }}
+            />
+          ) : currentTab === 'matches' ? (
+            <MatchesScreen onSelectMatch={handleSelectMatch} />
           ) : selectedVenue ? (
             <VenueDetailsScreen
               venue={selectedVenue}
@@ -42,6 +57,19 @@ function App(): React.JSX.Element {
 
         {/* Bottom Tab Navigation Bar matching Figma design */}
         <View style={styles.bottomNav}>
+          <TouchableOpacity
+            style={[styles.navItem, currentTab === 'matches' && styles.navItemActive]}
+            onPress={() => {
+              setCurrentTab('matches');
+              setSelectedVenue(null);
+            }}
+          >
+            <Text style={styles.navIcon}>🏆</Text>
+            <Text style={[styles.navLabel, currentTab === 'matches' && styles.navLabelActive]}>
+              Matches
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.navItem, currentTab === 'live' && styles.navItemActive]}
             onPress={() => {
@@ -87,7 +115,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.card,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     justifyContent: 'space-around',
     alignItems: 'center',
   },
