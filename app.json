@@ -1,4 +1,21 @@
 {
-  "name": "mobile_frontend",
-  "displayName": "mobile_frontend"
+  "expo": {
+    "name": "SportLK",
+    "slug": "sportlk-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#10B981"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#10B981"
+      }
+    }
+  }
 }
