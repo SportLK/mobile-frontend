@@ -1,76 +1,52 @@
-# 📱 SportLK Mobile App
+# SportLK Mobile Application (Expo SDK 58)
 
-<p align="center">
-  <strong>Discover events, build teams, and stay connected to sport in Sri Lanka.</strong>
-</p>
+The official player and community mobile client for the SportLK platform, built with **Expo SDK 58**, **Expo Router**, **React Native**, and **TypeScript**.
 
-SportLK is a cross-platform mobile app for players, team managers, and event organizers. This repository contains the React Native client; the planned service layer is the NestJS API backed by MySQL.
+---
 
-## 🧰 Technology
+## Features (Member 1 Scope)
 
-| Layer | Technology |
-| --- | --- |
-| Mobile app | React Native 0.87 · TypeScript |
-| API | [NestJS backend](https://github.com/SportLK/backend) |
-| Database | MySQL, accessed by the backend |
+- **Authentication & Security**: Email/password registration, login, role selection, and encrypted token storage using `expo-secure-store`.
+- **Player Profiles & Sports Preferences**: User bio, multi-sport selection, skill levels, and preferred positions.
+- **Community Feed & Interactions**: Real-time sports community posts, interactive likes, threaded comments, and content reporting.
+- **Role Applications**: In-app application workflow to apply for **Team Manager** or **Tournament Organizer** roles.
+- **Multi-Role Workspace Switching**: Dynamic navigation workspace switching based on approved user roles.
+- **Notifications**: In-app notifications feed with unread indicators and category badges.
 
-The mobile app communicates with the backend API. It does not connect to MySQL directly.
+---
 
-## ✨ Planned app workflows
+## Quick Start
 
-- **Players:** find events and teams, register for tournaments, view stats, and join the community
-- **Team managers:** create teams, manage rosters, invite players, and register for events
-- **Organizers:** publish events, create tournaments, schedule matches, and submit results
-- **Everyone:** follow scores, rankings, and sports community updates
+### 1. Prerequisites
+- Node.js 18+ installed
+- [Expo Go](https://expo.dev/go) app on your mobile device (iOS / Android) or an Android Emulator / iOS Simulator.
 
-These workflows describe the project direction. The app is currently a React Native CLI starter scaffold, and SportLK screens and API integration are still to be built.
-
-## 🚀 Run the app
-
-### Requirements
-
-- Node.js 22.11 or later
-- Android Studio and an Android emulator or device for Android development
-- macOS, Xcode, and CocoaPods for iOS development
-
-Install JavaScript dependencies:
-
+### 2. Install Dependencies
 ```bash
-npm ci
+npm install
 ```
 
-Start Metro in one terminal:
+### 3. Environment Configuration
+Copy `.env.example` to `.env`:
+```env
+# Android emulator connects via 10.0.2.2
+EXPO_PUBLIC_API_URL=http://10.0.2.2:3000/api/v1
 
-```bash
-npm start
+# For physical phone testing on the same Wi-Fi, use your computer's local IP:
+# EXPO_PUBLIC_API_URL=http://192.168.1.X:3000/api/v1
 ```
 
-Run the app from another terminal:
-
+### 4. Run Development Server
 ```bash
-# Android
-npm run android
-
-# iOS (macOS only)
-bundle install
-bundle exec pod install
-npm run ios
+npx expo start
 ```
+- **Physical Phone**: Scan the QR code shown in the terminal with Expo Go.
+- **Android Emulator**: Press `a`.
+- **iOS Simulator**: Press `i`.
+- **Web Preview**: Press `w`.
 
-For platform-specific setup, follow the [React Native environment setup guide](https://reactnative.dev/docs/set-up-your-environment).
+---
 
-## 🧪 Available scripts
+## Multi-Member Integration
 
-| Command | Purpose |
-| --- | --- |
-| `npm start` | Start the Metro development server |
-| `npm run android` | Build and launch on Android |
-| `npm run ios` | Build and launch on iOS |
-| `npm run lint` | Run ESLint |
-| `npm test` | Run Jest tests |
-
-## 🔗 SportLK repositories
-
-- [Backend API](https://github.com/SportLK/backend)
-- [Mobile app](https://github.com/SportLK/mobile-frontend)
-- [Admin website](https://github.com/SportLK/web-admin-frontend)
+For complete architecture, database entity relationships, and backend integration contracts across all 4 team members, refer to [TEAM_INTEGRATION_GUIDE.md](./TEAM_INTEGRATION_GUIDE.md).
