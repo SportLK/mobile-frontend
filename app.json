@@ -1,4 +1,12 @@
 {
   "name": "mobile_frontend",
-  "displayName": "mobile_frontend"
+  "displayName": "mobile_frontend",
+  "expo": {
+    "name": "SportLK",
+    "slug": "sportlk-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true
+  }
 }
