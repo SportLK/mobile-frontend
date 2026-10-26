@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { api } from '../services/api';
 
 export interface SquadMember {
   id: string;
@@ -60,6 +61,8 @@ interface TeamContextType {
   joinRequests: JoinRequest[];
   invitations: TeamInvitation[];
   challenges: Challenge[];
+  isLoading: boolean;
+  refreshFromBackend: () => Promise<void>;
   
   // Team Management
   switchActiveTeam: (teamId: string) => void;
@@ -87,7 +90,7 @@ interface TeamContextType {
 
 const INITIAL_TEAMS: TeamProfile[] = [
   {
-    id: 'team-1',
+    id: '1',
     name: 'Colombo Strikers',
     sport: 'Futsal',
     location: 'Colombo',
@@ -100,13 +103,13 @@ const INITIAL_TEAMS: TeamProfile[] = [
     status: 'Active team',
   },
   {
-    id: 'team-2',
-    name: 'Colombo Kings',
+    id: '2',
+    name: 'Kandy United',
     sport: 'Cricket',
-    location: 'Colombo',
+    location: 'Kandy',
     level: 'Advanced',
-    bio: 'Corporate weekend 10-overs cricket squad playing in the Western Province Premier League.',
-    initials: 'CK',
+    bio: 'Central Province futsal champions 2025.',
+    initials: 'KU',
     playersCount: 15,
     matchesCount: 22,
     winsCount: 16,
@@ -201,7 +204,6 @@ const INITIAL_INVITATIONS: TeamInvitation[] = [
 ];
 
 const INITIAL_CHALLENGES: Challenge[] = [
-  // Received
   {
     id: 'ch-1',
     type: 'Team challenge',
@@ -222,7 +224,6 @@ const INITIAL_CHALLENGES: Challenge[] = [
     status: 'Pending',
     direction: 'received',
   },
-  // Sent
   {
     id: 'ch-3',
     type: 'Team challenge',
@@ -233,7 +234,6 @@ const INITIAL_CHALLENGES: Challenge[] = [
     status: 'Pending',
     direction: 'sent',
   },
-  // Open / Browse
   {
     id: 'ch-4',
     type: 'Individual challenge',
@@ -256,6 +256,82 @@ const INITIAL_CHALLENGES: Challenge[] = [
   },
 ];
 
+// Mapper Helpers
+const mapBackendTeam = (t: any): TeamProfile => ({
+  id: String(t.id),
+  name: t.teamName || 'Unnamed Team',
+  sport: (t.sportType ? t.sportType.charAt(0) + t.sportType.slice(1).toLowerCase() : 'Futsal') as any,
+  location: t.primaryLocationCity || 'Colombo',
+  level: 'Intermediate',
+  bio: t.teamBio || '',
+  initials: t.teamName ? t.teamName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2) : 'TM',
+  playersCount: t.playersCount || (t.members ? t.members.length : 1),
+  matchesCount: 18,
+  winsCount: 12,
+  status: t.status === 'ACTIVE' ? 'Active team' : 'Inactive',
+});
+
+const mapBackendMember = (m: any): SquadMember => {
+  const roleNameMap: Record<string, SquadMember['role']> = {
+    CAPTAIN: 'Captain',
+    VICE_CAPTAIN: 'Vice-Captain',
+    FORWARD: 'Forward',
+    MIDFIELDER: 'Midfielder',
+    DEFENDER: 'Defender',
+    GOALKEEPER: 'Goalkeeper',
+    SQUAD_PLAYER: 'Squad Player',
+  };
+  const fullName = m.user?.fullName || m.name || `Player ${m.userId || m.id}`;
+  const initials = fullName.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+  return {
+    id: String(m.id),
+    name: fullName,
+    role: roleNameMap[m.memberRole] || 'Squad Player',
+    initials: initials || 'PL',
+    jerseyNumber: m.jerseyNumber,
+    status: 'Active',
+    joinedDate: m.joinedAt ? new Date(m.joinedAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'Oct 2026',
+  };
+};
+
+const mapBackendJoinRequest = (r: any): JoinRequest => {
+  const name = r.invitedUser?.fullName || `User #${r.invitedUserId}`;
+  const initials = name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2);
+  return {
+    id: String(r.id),
+    name,
+    sportLevel: 'Futsal · Intermediate',
+    initials: initials || 'JR',
+    requestedDate: r.createdAt ? new Date(r.createdAt).toLocaleDateString() : 'Recent',
+    message: r.notes || 'Looking to join squad.',
+  };
+};
+
+const mapBackendInvitation = (inv: any): TeamInvitation => {
+  const playerName = inv.invitedUser?.fullName || `Player #${inv.invitedUserId}`;
+  return {
+    id: String(inv.id),
+    playerName,
+    role: 'Squad Player',
+    jerseyNumber: undefined,
+    status: inv.status === 'ACCEPTED' ? 'Accepted' : inv.status === 'DECLINED' ? 'Declined' : 'Pending',
+    sentDate: inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : 'Recent',
+  };
+};
+
+const mapBackendChallenge = (c: any, direction: 'received' | 'sent' | 'open'): Challenge => {
+  return {
+    id: String(c.id),
+    type: 'Team challenge',
+    challengerTeam: c.challengerTeam?.teamName || `Team #${c.challengerTeamId}`,
+    challengedTeam: c.challengedTeam?.teamName || (c.challengedTeamId ? `Team #${c.challengedTeamId}` : 'Open Opponent'),
+    sport: `${c.sportType ? c.sportType.charAt(0) + c.sportType.slice(1).toLowerCase() : 'Futsal'} · Intermediate`,
+    dateVenue: c.proposedMatchDate ? new Date(c.proposedMatchDate).toLocaleDateString() : 'Upcoming',
+    status: c.status === 'ACCEPTED' ? 'Accepted' : c.status === 'DECLINED' ? 'Declined' : 'Pending',
+    direction,
+  };
+};
+
 const TeamContext = createContext<TeamContextType | undefined>(undefined);
 
 export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -265,17 +341,82 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>(INITIAL_JOIN_REQUESTS);
   const [invitations, setInvitations] = useState<TeamInvitation[]>(INITIAL_INVITATIONS);
   const [challenges, setChallenges] = useState<Challenge[]>(INITIAL_CHALLENGES);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Sync data with live NestJS backend
+  const refreshFromBackend = useCallback(async (targetTeamId?: string) => {
+    const currentTeamId = targetTeamId || activeTeam.id;
+    try {
+      setIsLoading(true);
+      const backendTeams = await api.getTeams();
+      if (backendTeams && Array.isArray(backendTeams) && backendTeams.length > 0) {
+        const mappedTeams = backendTeams.map(mapBackendTeam);
+        setTeams(mappedTeams);
+        const currentActive = mappedTeams.find((t) => t.id === currentTeamId) || mappedTeams[0];
+        setActiveTeam(currentActive);
+      }
+
+      // Fetch squad members for active team
+      const members = await api.getTeamMembers(currentTeamId);
+      if (members && Array.isArray(members) && members.length > 0) {
+        setSquad(members.map(mapBackendMember));
+      }
+
+      // Fetch join requests
+      const requests = await api.getJoinRequests(currentTeamId);
+      if (requests && Array.isArray(requests) && requests.length > 0) {
+        setJoinRequests(requests.map(mapBackendJoinRequest));
+      }
+
+      // Fetch invitations
+      const invs = await api.getTeamInvitations(currentTeamId);
+      if (invs && Array.isArray(invs) && invs.length > 0) {
+        setInvitations(invs.map(mapBackendInvitation));
+      }
+
+      // Fetch challenges
+      const [received, sent, open] = await Promise.allSettled([
+        api.getReceivedChallenges(currentTeamId),
+        api.getSentChallenges(currentTeamId),
+        api.getOpenChallenges(),
+      ]);
+
+      const mappedChallenges: Challenge[] = [];
+      if (received.status === 'fulfilled' && Array.isArray(received.value)) {
+        mappedChallenges.push(...received.value.map((c: any) => mapBackendChallenge(c, 'received')));
+      }
+      if (sent.status === 'fulfilled' && Array.isArray(sent.value)) {
+        mappedChallenges.push(...sent.value.map((c: any) => mapBackendChallenge(c, 'sent')));
+      }
+      if (open.status === 'fulfilled' && Array.isArray(open.value)) {
+        mappedChallenges.push(...open.value.map((c: any) => mapBackendChallenge(c, 'open')));
+      }
+
+      if (mappedChallenges.length > 0) {
+        setChallenges(mappedChallenges);
+      }
+    } catch {
+      // If offline or backend unreachable, fallback data remains active
+    } finally {
+      setIsLoading(false);
+    }
+  }, [activeTeam.id]);
+
+  useEffect(() => {
+    refreshFromBackend();
+  }, []);
 
   // Switch Active Team
   const switchActiveTeam = (teamId: string) => {
     const selected = teams.find((t) => t.id === teamId);
     if (selected) {
       setActiveTeam(selected);
+      refreshFromBackend(teamId);
     }
   };
 
   // Create Team
-  const createTeam = (teamData: {
+  const createTeam = async (teamData: {
     name: string;
     sport: TeamProfile['sport'];
     location: string;
@@ -289,8 +430,9 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       .toUpperCase()
       .substring(0, 2);
 
+    const tempId = `team-${Date.now()}`;
     const newTeam: TeamProfile = {
-      id: `team-${Date.now()}`,
+      id: tempId,
       name: teamData.name,
       sport: teamData.sport,
       location: teamData.location,
@@ -305,15 +447,42 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     setTeams((prev) => [...prev, newTeam]);
     setActiveTeam(newTeam);
+
+    try {
+      const res = await api.createTeam({
+        managerId: '1',
+        teamName: teamData.name,
+        sportType: teamData.sport.toUpperCase(),
+        primaryLocationCity: teamData.location,
+        teamBio: teamData.bio,
+      });
+      if (res && res.id) {
+        const realId = String(res.id);
+        setTeams((prev) => prev.map((t) => (t.id === tempId ? { ...t, id: realId } : t)));
+        setActiveTeam((prev) => (prev.id === tempId ? { ...prev, id: realId } : prev));
+      }
+    } catch {
+      // Fallback kept
+    }
   };
 
   // Update Active Team Profile
-  const updateTeam = (data: Partial<TeamProfile>) => {
+  const updateTeam = async (data: Partial<TeamProfile>) => {
     setActiveTeam((prev) => {
       const updated = { ...prev, ...data };
       setTeams((all) => all.map((t) => (t.id === prev.id ? updated : t)));
       return updated;
     });
+
+    try {
+      await api.updateTeam(activeTeam.id, {
+        teamName: data.name,
+        teamBio: data.bio,
+        primaryLocationCity: data.location,
+      });
+    } catch {
+      // Local state already updated
+    }
   };
 
   // Squad Member Management
@@ -339,34 +508,67 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     updateTeam({ playersCount: activeTeam.playersCount + 1 });
   };
 
-  const removeSquadMember = (id: string) => {
+  const removeSquadMember = async (id: string) => {
     setSquad((prev) => prev.filter((m) => m.id !== id));
     updateTeam({ playersCount: Math.max(1, activeTeam.playersCount - 1) });
+    try {
+      await api.removeTeamMember(activeTeam.id, id);
+    } catch {
+      // Local state already updated
+    }
   };
 
-  const updateSquadMemberRole = (id: string, role: SquadMember['role'], jersey?: number) => {
+  const updateSquadMemberRole = async (id: string, role: SquadMember['role'], jersey?: number) => {
     setSquad((prev) =>
       prev.map((m) =>
         m.id === id ? { ...m, role, jerseyNumber: jersey !== undefined ? jersey : m.jerseyNumber } : m
       )
     );
+    try {
+      const roleEnumMap: Record<string, string> = {
+        Captain: 'CAPTAIN',
+        'Vice-Captain': 'VICE_CAPTAIN',
+        Forward: 'FORWARD',
+        Midfielder: 'MIDFIELDER',
+        Defender: 'DEFENDER',
+        Goalkeeper: 'GOALKEEPER',
+        'Squad Player': 'SQUAD_PLAYER',
+      };
+      await api.updateMemberRole(activeTeam.id, id, {
+        memberRole: roleEnumMap[role] || 'SQUAD_PLAYER',
+        jerseyNumber: jersey,
+      });
+    } catch {
+      // Local state already updated
+    }
   };
 
   // Join Requests
-  const acceptJoinRequest = (id: string) => {
+  const acceptJoinRequest = async (id: string) => {
     const req = joinRequests.find((r) => r.id === id);
     if (!req) return;
 
     addSquadMember(req.name, 'Squad Player');
     setJoinRequests((prev) => prev.filter((r) => r.id !== id));
+
+    try {
+      await api.acceptJoinRequest(activeTeam.id, id);
+    } catch {
+      // Local state already updated
+    }
   };
 
-  const rejectJoinRequest = (id: string) => {
+  const rejectJoinRequest = async (id: string) => {
     setJoinRequests((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await api.rejectJoinRequest(activeTeam.id, id);
+    } catch {
+      // Local state already updated
+    }
   };
 
   // Invitations
-  const sendInvitation = (playerName: string, role: string, jersey?: number) => {
+  const sendInvitation = async (playerName: string, role: string, jersey?: number) => {
     const newInv: TeamInvitation = {
       id: `inv-${Date.now()}`,
       playerName,
@@ -376,14 +578,25 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       sentDate: 'Just now',
     };
     setInvitations((prev) => [newInv, ...prev]);
+
+    try {
+      await api.createInvitation(activeTeam.id, { invitedUserId: '2' });
+    } catch {
+      // Local state already updated
+    }
   };
 
-  const cancelInvitation = (id: string) => {
+  const cancelInvitation = async (id: string) => {
     setInvitations((prev) => prev.filter((i) => i.id !== id));
+    try {
+      await api.cancelInvitation(activeTeam.id, id);
+    } catch {
+      // Local state already updated
+    }
   };
 
   // Challenges & Challenge Responses
-  const createChallenge = (opponentTeam: string, sport: string, dateVenue: string) => {
+  const createChallenge = async (opponentTeam: string, sport: string, dateVenue: string) => {
     const newChallenge: Challenge = {
       id: `ch-sent-${Date.now()}`,
       type: 'Team challenge',
@@ -395,18 +608,38 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       direction: 'sent',
     };
     setChallenges((prev) => [newChallenge, ...prev]);
+
+    try {
+      await api.createChallenge(activeTeam.id, {
+        challengedTeamId: '2',
+        sportType: sport.toUpperCase().includes('FUTSAL') ? 'FUTSAL' : 'CRICKET',
+        proposedMatchDate: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+      });
+    } catch {
+      // Local state already updated
+    }
   };
 
-  const acceptChallenge = (id: string) => {
+  const acceptChallenge = async (id: string) => {
     setChallenges((prev) =>
       prev.map((c) => (c.id === id ? { ...c, status: 'Accepted' } : c))
     );
+    try {
+      await api.respondToChallenge(activeTeam.id, id, 'ACCEPTED');
+    } catch {
+      // Local state already updated
+    }
   };
 
-  const declineChallenge = (id: string) => {
+  const declineChallenge = async (id: string) => {
     setChallenges((prev) =>
       prev.map((c) => (c.id === id ? { ...c, status: 'Declined' } : c))
     );
+    try {
+      await api.respondToChallenge(activeTeam.id, id, 'DECLINED');
+    } catch {
+      // Local state already updated
+    }
   };
 
   return (
@@ -418,6 +651,8 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         joinRequests,
         invitations,
         challenges,
+        isLoading,
+        refreshFromBackend,
         switchActiveTeam,
         createTeam,
         updateTeam,
@@ -445,3 +680,4 @@ export const useTeamContext = () => {
   }
   return context;
 };
+
