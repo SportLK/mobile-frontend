@@ -25,6 +25,7 @@ import {
 } from '../constants/seedData';
 import { Community, FeedComment, FeedPost, Notification, RoleApplication, Workspace } from '../types';
 import SportsHubScreen from './SportsHubScreen';
+import OrganizerApplicationScreen from './tournaments/OrganizerApplicationScreen';
 
 // ─── Helper ────────────────────────────────────────────────────────────────
 function bubbleStyle(color: string) {
@@ -62,6 +63,7 @@ export default function MainApp() {
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [profileNameDraft, setProfileNameDraft] = useState('');
   const [profileCityDraft, setProfileCityDraft] = useState('');
+  const [organizerAppOpen, setOrganizerAppOpen] = useState(false);
 
   const firstName = userName.split(' ')[0];
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -272,7 +274,7 @@ export default function MainApp() {
             name={userName} email={userEmail} city={userCity}
             interests={interests} roles={roles} workspace={workspace}
             applications={applications} onToggleInterest={toggleInterest}
-            onWorkspace={setWorkspace} onApply={() => setApplicationOpen(true)}
+            onWorkspace={setWorkspace} onApply={() => setApplicationOpen(true)} onOpenOrganizerApp={() => setOrganizerAppOpen(true)}
             onEdit={() => { setProfileNameDraft(userName); setProfileCityDraft(userCity); setProfileEditOpen(true); }}
             onSignOut={signOut}
           />
@@ -306,6 +308,15 @@ export default function MainApp() {
         }}
       />
       <ReportModal visible={Boolean(reportingPost)} reason={reportReason} setReason={setReportReason} onClose={() => setReportingPost(null)} onSubmit={submitReport} />
+      <Modal visible={organizerAppOpen} animationType="slide" onRequestClose={() => setOrganizerAppOpen(false)}>
+        <OrganizerApplicationScreen
+          onBack={() => setOrganizerAppOpen(false)}
+          onNavigateToWorkspace={() => {
+            setOrganizerAppOpen(false);
+            setWorkspace('organizer');
+          }}
+        />
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -548,10 +559,10 @@ function Alerts({ notifications, setNotifications, onMarkAll, onRead }: {
   );
 }
 
-function Profile({ name, email, city, interests, roles, workspace, applications, onToggleInterest, onWorkspace, onApply, onEdit, onSignOut }: {
+function Profile({ name, email, city, interests, roles, workspace, applications, onToggleInterest, onWorkspace, onApply, onEdit, onSignOut, onOpenOrganizerApp }: {
   name: string; email: string; city: string; interests: string[]; roles: Workspace[]; workspace: Workspace;
   applications: RoleApplication[]; onToggleInterest: (sport: string) => void; onWorkspace: (w: Workspace) => void;
-  onApply: () => void; onEdit: () => void; onSignOut: () => void;
+  onApply: () => void; onEdit: () => void; onSignOut: () => void; onOpenOrganizerApp: () => void;
 }) {
   return (
     <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
@@ -599,7 +610,7 @@ function Profile({ name, email, city, interests, roles, workspace, applications,
           const application = applications.find((a) => a.role === item.key);
           const isSelected = workspace === item.key;
           return (
-            <Pressable key={item.key} disabled={!hasRole} onPress={() => onWorkspace(item.key)}
+            <Pressable key={item.key} onPress={() => (hasRole ? onWorkspace(item.key) : item.key === 'organizer' ? onOpenOrganizerApp() : undefined)}
               style={[s.workspaceRow, index < workspaces.length - 1 && s.workspaceRowBorder]}>
               <View style={[s.workspaceRoleIcon, isSelected && s.workspaceRoleIconSelected]}>
                 <Text style={s.workspaceRoleGlyph}>{item.key === 'player' ? '♙' : item.key === 'team_manager' ? '♧' : '▦'}</Text>
@@ -616,6 +627,14 @@ function Profile({ name, email, city, interests, roles, workspace, applications,
             </Pressable>
           );
         })}
+        <Pressable style={s.applyRoleButton} onPress={onOpenOrganizerApp}>
+          <View style={[s.applyPlus, { backgroundColor: '#D1FAE5' }]}><Text>🎖️</Text></View>
+          <View style={s.applyRoleCopy}>
+            <Text style={s.applyRoleTitle}>Tournament Organizer Accreditation</Text>
+            <Text style={s.applyRoleSub}>{roles.includes('organizer') ? 'Verified Organizer · View status & workspace' : 'Apply to host and sanction tournaments'}</Text>
+          </View>
+          <Text style={s.applyChevron}>→</Text>
+        </Pressable>
         <Pressable style={s.applyRoleButton} onPress={onApply}>
           <View style={s.applyPlus}><Text>＋</Text></View>
           <View style={s.applyRoleCopy}>
