@@ -1,52 +1,65 @@
-# SportLK Mobile Application (Expo SDK 58)
+# 📱 SportLK Mobile App
 
-The official player and community mobile client for the SportLK platform, built with **Expo SDK 58**, **Expo Router**, **React Native**, and **TypeScript**.
+<p align="center">
+  <strong>Discover events, build teams, and stay connected to sport in Sri Lanka.</strong>
+</p>
 
----
+SportLK is a cross-platform app for players, team managers, and event organizers. This repository contains the Expo and React Native client, which connects to the SportLK backend API.
 
-## Features (Member 1 Scope)
+## 🧰 Technology
 
-- **Authentication & Security**: Email/password registration, login, role selection, and encrypted token storage using `expo-secure-store`.
-- **Player Profiles & Sports Preferences**: User bio, multi-sport selection, skill levels, and preferred positions.
-- **Community Feed & Interactions**: Real-time sports community posts, interactive likes, threaded comments, and content reporting.
-- **Role Applications**: In-app application workflow to apply for **Team Manager** or **Tournament Organizer** roles.
-- **Multi-Role Workspace Switching**: Dynamic navigation workspace switching based on approved user roles.
-- **Notifications**: In-app notifications feed with unread indicators and category badges.
+| Layer | Technology |
+| --- | --- |
+| Mobile app | Expo SDK 58 · React Native · TypeScript · Expo Router |
+| Live updates | Socket.IO client |
+| API service | [NestJS backend](https://github.com/SportLK/backend) |
+| Database | MySQL, accessed by the backend |
 
----
+The mobile app communicates with the backend API. It does not connect to MySQL directly.
 
-## Quick Start
+## ✨ App capabilities
 
-### 1. Prerequisites
-- Node.js 18+ installed
-- [Expo Go](https://expo.dev/go) app on your mobile device (iOS / Android) or an Android Emulator / iOS Simulator.
+- Register, sign in, and store session tokens securely
+- Manage player profiles, sports preferences, and role applications
+- Browse community posts, interact with members, and receive notifications
+- View matches, live scores, statistics, venues, and venue details
 
-### 2. Install Dependencies
+## 🚀 Run locally
+
+### Requirements
+
+- Node.js and npm
+- Expo Go or an Android emulator / iOS simulator
+- For iOS simulator builds, macOS with Xcode
+
+Install dependencies:
+
 ```bash
-npm install
+npm ci
 ```
 
-### 3. Environment Configuration
-Copy `.env.example` to `.env`:
-```env
-# Android emulator connects via 10.0.2.2
-EXPO_PUBLIC_API_URL=http://10.0.2.2:3000/api/v1
+Set `EXPO_PUBLIC_API_URL` in `.env` to the backend URL. For an Android emulator, use `http://10.0.2.2:3000/api/v1`; for a physical device, use your computer's local network address.
 
-# For physical phone testing on the same Wi-Fi, use your computer's local IP:
-# EXPO_PUBLIC_API_URL=http://192.168.1.X:3000/api/v1
-```
+Start Expo:
 
-### 4. Run Development Server
 ```bash
 npx expo start
 ```
-- **Physical Phone**: Scan the QR code shown in the terminal with Expo Go.
-- **Android Emulator**: Press `a`.
-- **iOS Simulator**: Press `i`.
-- **Web Preview**: Press `w`.
 
----
+Scan the QR code with Expo Go, or press `a` for Android, `i` for iOS, or `w` for the web preview.
 
-## Multi-Member Integration
+### Available scripts
 
-For complete architecture, database entity relationships, and backend integration contracts across all 4 team members, refer to [TEAM_INTEGRATION_GUIDE.md](./TEAM_INTEGRATION_GUIDE.md).
+| Command | Purpose |
+| --- | --- |
+| `npm start` | Start the Expo development server |
+| `npm run android` | Start Expo for Android |
+| `npm run ios` | Start Expo for iOS |
+| `npm run web` | Start the web preview |
+
+## 🔗 SportLK repositories
+
+- [Backend API](https://github.com/SportLK/backend)
+- [Mobile app](https://github.com/SportLK/mobile-frontend)
+- [Admin website](https://github.com/SportLK/web-admin-frontend)
+- [Team integration guide](./TEAM_INTEGRATION_GUIDE.md)
