@@ -24,6 +24,7 @@ import {
   starterCommunities,
 } from '../constants/seedData';
 import { Community, FeedComment, FeedPost, Notification, RoleApplication, Workspace } from '../types';
+import SportsHubScreen from './SportsHubScreen';
 
 // ─── Helper ────────────────────────────────────────────────────────────────
 function bubbleStyle(color: string) {
@@ -40,7 +41,7 @@ export default function MainApp() {
     roles, workspace, setWorkspace, signOut, setUserName, setUserCity, setRoles,
   } = useAuth();
 
-  type Tab = 'Home' | 'Discover' | 'Alerts' | 'Profile';
+  type Tab = 'Home' | 'Discover' | 'Sports' | 'Alerts' | 'Profile';
   const [tab, setTab] = useState<Tab>('Home');
   const [posts, setPosts] = useState(startingPosts);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, FeedComment[]>>({});
@@ -259,6 +260,7 @@ export default function MainApp() {
         {tab === 'Discover' && (
           <Discover communities={communities} setCommunities={setCommunities} accessToken={accessToken} />
         )}
+        {tab === 'Sports' && <SportsHubScreen />}
         {tab === 'Alerts' && (
           <Alerts notifications={notifications} setNotifications={setNotifications}
             onMarkAll={markAllRead}
@@ -280,6 +282,7 @@ export default function MainApp() {
         <View style={s.bottomNav}>
           <TabButton icon="⌂" label="Home" active={tab === 'Home'} onPress={() => setTab('Home')} />
           <TabButton icon="◉" label="Discover" active={tab === 'Discover'} onPress={() => setTab('Discover')} />
+          <TabButton icon="🏆" label="Sports" active={tab === 'Sports'} onPress={() => setTab('Sports')} />
           <TabButton icon="♧" label="Alerts" active={tab === 'Alerts'} onPress={() => setTab('Alerts')} badge={unreadCount} />
           <TabButton icon="♙" label="Profile" active={tab === 'Profile'} onPress={() => setTab('Profile')} />
         </View>
@@ -643,7 +646,7 @@ function PageIntro({ eyebrow, title, subtitle }: { eyebrow: string; title: strin
   );
 }
 
-type TabLabel = 'Home' | 'Discover' | 'Alerts' | 'Profile';
+type TabLabel = 'Home' | 'Discover' | 'Sports' | 'Alerts' | 'Profile';
 function TabButton({ icon, label, active, badge, onPress }: { icon: string; label: TabLabel; active: boolean; badge?: number; onPress: () => void }) {
   return (
     <Pressable style={s.tabButton} onPress={onPress}>

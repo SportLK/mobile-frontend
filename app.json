@@ -7,6 +7,10 @@
     "scheme": "sportlk",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#10B981"
+    },
     "ios": {
       "supportsTablet": true
     },
