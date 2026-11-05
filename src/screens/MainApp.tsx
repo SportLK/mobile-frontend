@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -27,6 +27,7 @@ import { Community, FeedComment, FeedPost, Notification, RoleApplication, Worksp
 import SportsHubScreen from './SportsHubScreen';
 import OrganizerApplicationScreen from './tournaments/OrganizerApplicationScreen';
 import OrganizerWorkspaceScreen from './tournaments/OrganizerWorkspaceScreen';
+import CreateTournamentScreen from './tournaments/CreateTournamentScreen';
 
 // â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function bubbleStyle(color: string) {
@@ -65,6 +66,8 @@ export default function MainApp() {
   const [profileNameDraft, setProfileNameDraft] = useState('');
   const [profileCityDraft, setProfileCityDraft] = useState('');
   const [organizerAppOpen, setOrganizerAppOpen] = useState(false);
+  const [createTournamentOpen, setCreateTournamentOpen] = useState(false);
+  const [workspaceRefreshKey, setWorkspaceRefreshKey] = useState(0);
 
   const firstName = userName.split(' ')[0];
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -265,9 +268,8 @@ export default function MainApp() {
         )}
         {tab === 'Sports' && workspace === 'organizer' && (
           <OrganizerWorkspaceScreen
-            onCreateTournament={() => {
-              Alert.alert('Create Tournament', 'Tournament creation form will open in Step 3.');
-            }}
+            key={workspaceRefreshKey}
+            onCreateTournament={() => setCreateTournamentOpen(true)}
             onSelectTournament={(t) => {
               Alert.alert(t.tournamentName, 'Format: ' + t.tournamentFormat + '\nStatus: ' + t.tournamentStatus + '\nTeams: ' + (t.registrations ? t.registrations.length : 0));
             }}
@@ -332,6 +334,15 @@ export default function MainApp() {
           onNavigateToWorkspace={() => {
             setOrganizerAppOpen(false);
             setWorkspace('organizer');
+          }}
+        />
+      </Modal>
+      <Modal visible={createTournamentOpen} animationType="slide" onRequestClose={() => setCreateTournamentOpen(false)}>
+        <CreateTournamentScreen
+          onBack={() => setCreateTournamentOpen(false)}
+          onCreateSuccess={() => {
+            setCreateTournamentOpen(false);
+            setWorkspaceRefreshKey((k) => k + 1);
           }}
         />
       </Modal>

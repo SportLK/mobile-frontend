@@ -8,6 +8,7 @@ import {
   RoleApplicationRecord,
 } from '../types/tournament.types';
 import { Match } from '../types/match.types';
+import { Venue } from '../types/venue.types';
 
 export const tournamentService = {
   // ── 1. Organizer Application & Workspace ─────────────────────────────────
@@ -185,6 +186,14 @@ export const tournamentService = {
 
   async getTournamentSchedules(tournamentId: string): Promise<Match[]> {
     return apiRequest<Match[]>(`/tournaments/${tournamentId}/schedules`);
+  },
+
+  async getVenues(sportType?: string, city?: string): Promise<Venue[]> {
+    const query = new URLSearchParams();
+    if (sportType) query.append('sportType', sportType);
+    if (city) query.append('city', city);
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    return apiRequest<Venue[]>(`/venues${queryString}`);
   },
 
   async seedDemoData(): Promise<any> {
