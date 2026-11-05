@@ -28,6 +28,8 @@ import SportsHubScreen from './SportsHubScreen';
 import OrganizerApplicationScreen from './tournaments/OrganizerApplicationScreen';
 import OrganizerWorkspaceScreen from './tournaments/OrganizerWorkspaceScreen';
 import CreateTournamentScreen from './tournaments/CreateTournamentScreen';
+import TournamentDetailScreen from './tournaments/TournamentDetailScreen';
+import { Tournament } from '../types/tournament.types';
 
 // â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function bubbleStyle(color: string) {
@@ -68,6 +70,7 @@ export default function MainApp() {
   const [organizerAppOpen, setOrganizerAppOpen] = useState(false);
   const [createTournamentOpen, setCreateTournamentOpen] = useState(false);
   const [workspaceRefreshKey, setWorkspaceRefreshKey] = useState(0);
+  const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
 
   const firstName = userName.split(' ')[0];
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -270,15 +273,11 @@ export default function MainApp() {
           <OrganizerWorkspaceScreen
             key={workspaceRefreshKey}
             onCreateTournament={() => setCreateTournamentOpen(true)}
-            onSelectTournament={(t) => {
-              Alert.alert(t.tournamentName, 'Format: ' + t.tournamentFormat + '\nStatus: ' + t.tournamentStatus + '\nTeams: ' + (t.registrations ? t.registrations.length : 0));
-            }}
+            onSelectTournament={(t) => setSelectedTournament(t)}
             onManageBrackets={(t) => {
               Alert.alert('Bracket Tree', 'Bracket management for ' + t.tournamentName + ' will open in Step 5.');
             }}
-            onManageRegistrations={(t) => {
-              Alert.alert('Registrations', 'Team registrations for ' + t.tournamentName + ' will open in Step 4.');
-            }}
+            onManageRegistrations={(t) => setSelectedTournament(t)}
             onSwitchWorkspace={() => setTab('Profile')}
           />
         )}
@@ -345,6 +344,21 @@ export default function MainApp() {
             setWorkspaceRefreshKey((k) => k + 1);
           }}
         />
+      </Modal>
+      <Modal visible={Boolean(selectedTournament)} animationType="slide" onRequestClose={() => setSelectedTournament(null)}>
+        {selectedTournament && (
+          <TournamentDetailScreen
+            tournament={selectedTournament}
+            onBack={() => setSelectedTournament(null)}
+            onTournamentUpdated={() => setWorkspaceRefreshKey((k) => k + 1)}
+            onOpenBrackets={(t) => {
+              Alert.alert('Bracket Tree', 'Bracket Tree Screen will open in Step 5.');
+            }}
+            onOpenSchedules={(t) => {
+              Alert.alert('Match Schedules', 'Fixtures & Schedules Screen will open in Step 6.');
+            }}
+          />
+        )}
       </Modal>
     </SafeAreaView>
   );
