@@ -30,6 +30,7 @@ import OrganizerWorkspaceScreen from './tournaments/OrganizerWorkspaceScreen';
 import CreateTournamentScreen from './tournaments/CreateTournamentScreen';
 import TournamentDetailScreen from './tournaments/TournamentDetailScreen';
 import BracketTreeScreen from './tournaments/BracketTreeScreen';
+import SchedulesScreen from './tournaments/SchedulesScreen';
 import { Tournament } from '../types/tournament.types';
 
 // â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -73,6 +74,7 @@ export default function MainApp() {
   const [workspaceRefreshKey, setWorkspaceRefreshKey] = useState(0);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [bracketTournament, setBracketTournament] = useState<Tournament | null>(null);
+  const [scheduleTournament, setScheduleTournament] = useState<Tournament | null>(null);
 
   const firstName = userName.split(' ')[0];
   const unreadCount = notifications.filter((n) => n.unread).length;
@@ -352,9 +354,7 @@ export default function MainApp() {
             onBack={() => setSelectedTournament(null)}
             onTournamentUpdated={() => setWorkspaceRefreshKey((k) => k + 1)}
             onOpenBrackets={(t) => setBracketTournament(t)}
-            onOpenSchedules={(t) => {
-              Alert.alert('Match Schedules', 'Fixtures & Schedules Screen will open in Step 6.');
-            }}
+            onOpenSchedules={(t) => setScheduleTournament(t)}
           />
         )}
       </Modal>
@@ -364,6 +364,19 @@ export default function MainApp() {
             tournament={bracketTournament}
             onBack={() => setBracketTournament(null)}
             onTournamentUpdated={() => setWorkspaceRefreshKey((k) => k + 1)}
+          />
+        )}
+      </Modal>
+      <Modal visible={Boolean(scheduleTournament)} animationType="slide" onRequestClose={() => setScheduleTournament(null)}>
+        {scheduleTournament && (
+          <SchedulesScreen
+            tournament={scheduleTournament}
+            onBack={() => setScheduleTournament(null)}
+            onNavigateToBrackets={() => {
+              const t = scheduleTournament;
+              setScheduleTournament(null);
+              setBracketTournament(t);
+            }}
           />
         )}
       </Modal>
