@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -26,8 +26,9 @@ import {
 import { Community, FeedComment, FeedPost, Notification, RoleApplication, Workspace } from '../types';
 import SportsHubScreen from './SportsHubScreen';
 import OrganizerApplicationScreen from './tournaments/OrganizerApplicationScreen';
+import OrganizerWorkspaceScreen from './tournaments/OrganizerWorkspaceScreen';
 
-// ─── Helper ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function bubbleStyle(color: string) {
   if (color === 'blue') return s.bubble_blue;
   if (color === 'green') return s.bubble_green;
@@ -35,7 +36,7 @@ function bubbleStyle(color: string) {
   return s.bubble_sand;
 }
 
-// ─── Main App Shell ────────────────────────────────────────────────────────
+// â”€â”€â”€ Main App Shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function MainApp() {
   const {
     accessToken, refreshToken, userName, userEmail, userCity,
@@ -87,7 +88,7 @@ export default function MainApp() {
         id: item.id, name: item.name, sport: item.sport,
         location: item.location ?? 'Sri Lanka',
         members: item.memberCount >= 1000 ? `${(item.memberCount / 1000).toFixed(1)}k` : String(item.memberCount),
-        initials: item.sport === 'Cricket' ? '🏏' : item.sport === 'Badminton' ? '🏸' : item.sport === 'Football' ? '⚽' : '◉',
+        initials: item.sport === 'Cricket' ? 'ðŸ' : item.sport === 'Badminton' ? 'ðŸ¸' : item.sport === 'Football' ? 'âš½' : 'â—‰',
         joined: item.isMember,
         color: item.sport === 'Cricket' ? 'sand' : item.sport === 'Football' ? 'purple' : 'blue',
       }))))
@@ -117,7 +118,7 @@ export default function MainApp() {
       .catch(() => undefined);
   }, [accessToken]);
 
-  // ─── Actions ──────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function toggleLike(id: string) {
     const selected = posts.find((p) => p.id === id);
     if (!selected) return;
@@ -222,7 +223,7 @@ export default function MainApp() {
     if (accessToken) apiRequest('/users/me', { method: 'PATCH', body: JSON.stringify({ sports: next }) }, accessToken).catch(() => undefined);
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
@@ -234,12 +235,12 @@ export default function MainApp() {
             <View><Text style={s.brandName}>Sport<Text style={s.brandGold}>LK</Text></Text><Text style={s.brandTag}>YOUR GAME. YOUR PEOPLE.</Text></View>
           </View>
           <View style={s.headerActions}>
-            <Pressable style={s.activeWorkspace} onPress={() => setTab('Profile')}>
+            <Pressable style={s.activeWorkspace} onPress={() => { if (workspace === 'organizer') setTab('Sports'); else setTab('Profile'); }}>
               <Text style={s.activeWorkspaceText}>{currentWorkspaceLabel}</Text>
-              <Text style={s.activeWorkspaceChevron}>⌄</Text>
+              <Text style={s.activeWorkspaceChevron}>▾</Text>
             </Pressable>
             <Pressable style={s.headerIcon} onPress={() => setTab('Alerts')}>
-              <Text style={s.headerIconText}>♧</Text>
+              <Text style={s.headerIconText}>â™§</Text>
               {unreadCount > 0 && <View style={s.noticeDot} />}
             </Pressable>
             <Pressable style={s.headerAvatar} onPress={() => setTab('Profile')}>
@@ -262,7 +263,24 @@ export default function MainApp() {
         {tab === 'Discover' && (
           <Discover communities={communities} setCommunities={setCommunities} accessToken={accessToken} />
         )}
-        {tab === 'Sports' && <SportsHubScreen />}
+        {tab === 'Sports' && workspace === 'organizer' && (
+          <OrganizerWorkspaceScreen
+            onCreateTournament={() => {
+              Alert.alert('Create Tournament', 'Tournament creation form will open in Step 3.');
+            }}
+            onSelectTournament={(t) => {
+              Alert.alert(t.tournamentName, 'Format: ' + t.tournamentFormat + '\nStatus: ' + t.tournamentStatus + '\nTeams: ' + (t.registrations ? t.registrations.length : 0));
+            }}
+            onManageBrackets={(t) => {
+              Alert.alert('Bracket Tree', 'Bracket management for ' + t.tournamentName + ' will open in Step 5.');
+            }}
+            onManageRegistrations={(t) => {
+              Alert.alert('Registrations', 'Team registrations for ' + t.tournamentName + ' will open in Step 4.');
+            }}
+            onSwitchWorkspace={() => setTab('Profile')}
+          />
+        )}
+        {tab === 'Sports' && workspace !== 'organizer' && <SportsHubScreen />}
         {tab === 'Alerts' && (
           <Alerts notifications={notifications} setNotifications={setNotifications}
             onMarkAll={markAllRead}
@@ -282,11 +300,11 @@ export default function MainApp() {
 
         {/* Bottom nav */}
         <View style={s.bottomNav}>
-          <TabButton icon="⌂" label="Home" active={tab === 'Home'} onPress={() => setTab('Home')} />
-          <TabButton icon="◉" label="Discover" active={tab === 'Discover'} onPress={() => setTab('Discover')} />
-          <TabButton icon="🏆" label="Sports" active={tab === 'Sports'} onPress={() => setTab('Sports')} />
-          <TabButton icon="♧" label="Alerts" active={tab === 'Alerts'} onPress={() => setTab('Alerts')} badge={unreadCount} />
-          <TabButton icon="♙" label="Profile" active={tab === 'Profile'} onPress={() => setTab('Profile')} />
+          <TabButton icon="âŒ‚" label="Home" active={tab === 'Home'} onPress={() => setTab('Home')} />
+          <TabButton icon="â—‰" label="Discover" active={tab === 'Discover'} onPress={() => setTab('Discover')} />
+          <TabButton icon="ðŸ†" label="Sports" active={tab === 'Sports'} onPress={() => setTab('Sports')} />
+          <TabButton icon="â™§" label="Alerts" active={tab === 'Alerts'} onPress={() => setTab('Alerts')} badge={unreadCount} />
+          <TabButton icon="â™™" label="Profile" active={tab === 'Profile'} onPress={() => setTab('Profile')} />
         </View>
       </View>
 
@@ -321,7 +339,7 @@ export default function MainApp() {
   );
 }
 
-// ─── Sub-components ─────────────────────────────────────────────────────────
+// â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function HomeFeed({ firstName, posts, commentsByPost, communities, joinedCount, onCompose, onDiscover, onLike, onReport, onComment, commentingPost, commentText, setCommentText, onSubmitComment }: {
   firstName: string; posts: FeedPost[]; commentsByPost: Record<string, FeedComment[]>;
   communities: Community[]; joinedCount: number; onCompose: () => void; onDiscover: () => void;
@@ -333,10 +351,10 @@ function HomeFeed({ firstName, posts, commentsByPost, communities, joinedCount, 
       <View style={s.greetingRow}>
         <View>
           <Text style={s.kicker}>SUNDAY, OCTOBER 11</Text>
-          <Text style={s.greeting}>Good morning, {firstName} <Text style={s.wave}>☀</Text></Text>
+          <Text style={s.greeting}>Good morning, {firstName} <Text style={s.wave}>â˜€</Text></Text>
           <Text style={s.subGreeting}>Ready to get moving today?</Text>
         </View>
-        <View style={s.dayChip}><Text style={s.dayChipText}>LK · 32°</Text></View>
+        <View style={s.dayChip}><Text style={s.dayChipText}>LK Â· 32Â°</Text></View>
       </View>
 
       <View style={s.heroCard}>
@@ -344,19 +362,19 @@ function HomeFeed({ firstName, posts, commentsByPost, communities, joinedCount, 
         <View><Text style={s.heroEyebrow}>THE SPORTLK COMMUNITY</Text>
           <Text style={s.heroTitle}>Your game.{"\n"}Your people.</Text>
           <Text style={s.heroDescription}>Find your team, share your wins, and play more.</Text>
-          <Pressable style={s.heroButton} onPress={onCompose}><Text style={s.heroButtonText}>Share an update <Text style={s.heroArrow}>↗</Text></Text></Pressable>
+          <Pressable style={s.heroButton} onPress={onCompose}><Text style={s.heroButtonText}>Share an update <Text style={s.heroArrow}>â†—</Text></Text></Pressable>
         </View>
         <View style={s.heroBall}><Text style={s.heroBallText}>S</Text><View style={s.heroBallArc} /></View>
         <View style={s.heroFoot}>
           <Text style={s.heroFootStrong}>{joinedCount} communities</Text>
-          <Text style={s.heroFootDivider}>·</Text>
+          <Text style={s.heroFootDivider}>Â·</Text>
           <Text>made for your game</Text>
         </View>
       </View>
 
       <View style={s.sectionHead}>
         <View><Text style={s.sectionTitle}>Your communities</Text><Text style={s.sectionSub}>A little closer to your people</Text></View>
-        <Text style={s.sectionArrow}>→</Text>
+        <Text style={s.sectionArrow}>â†’</Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.communityStrip}>
         {communities.filter((c) => c.joined).map((c) => (
@@ -366,19 +384,19 @@ function HomeFeed({ firstName, posts, commentsByPost, communities, joinedCount, 
           </View>
         ))}
         <Pressable style={s.communityBubbleWrap} onPress={onDiscover}>
-          <View style={s.addCommunityBubble}><Text style={s.addCommunityPlus}>＋</Text></View>
+          <View style={s.addCommunityBubble}><Text style={s.addCommunityPlus}>ï¼‹</Text></View>
           <Text style={s.communityBubbleName}>Discover</Text>
         </Pressable>
       </ScrollView>
 
       <View style={s.feedSectionHead}>
         <View><Text style={s.sectionTitle}>Community feed</Text><Text style={s.sectionSub}>Good things are happening out there</Text></View>
-        <View style={s.feedSort}><Text style={s.feedSortText}>For you</Text><Text style={s.feedSortChevron}>⌄</Text></View>
+        <View style={s.feedSort}><Text style={s.feedSortText}>For you</Text><Text style={s.feedSortChevron}>âŒ„</Text></View>
       </View>
       <Pressable style={s.quickCompose} onPress={onCompose}>
         <View style={s.quickAvatar}><Text style={s.quickAvatarText}>{firstName.slice(0, 1)}</Text></View>
         <Text style={s.quickPlaceholder}>What's happening in your game?</Text>
-        <View style={s.quickPlus}><Text style={s.quickPlusText}>＋</Text></View>
+        <View style={s.quickPlus}><Text style={s.quickPlusText}>ï¼‹</Text></View>
       </Pressable>
 
       {posts.map((post, index) => (
@@ -388,7 +406,7 @@ function HomeFeed({ firstName, posts, commentsByPost, communities, joinedCount, 
           setCommentText={setCommentText} onSubmitComment={() => onSubmitComment(post.id)}
         />
       ))}
-      <View style={s.feedEnd}><Text style={s.feedEndStar}>✦</Text><Text style={s.feedEndText}>You're all caught up</Text><Text style={s.feedEndSub}>Go make a little more sport happen.</Text></View>
+      <View style={s.feedEnd}><Text style={s.feedEndStar}>âœ¦</Text><Text style={s.feedEndText}>You're all caught up</Text><Text style={s.feedEndSub}>Go make a little more sport happen.</Text></View>
     </ScrollView>
   );
 }
@@ -406,33 +424,33 @@ function PostCard({ post, comments, index, onLike, onReport, onComment, commenti
         </View>
         <View style={s.postAuthor}>
           <Text style={s.postAuthorName}>{post.author}</Text>
-          <Text style={s.postCommunity}>{post.community} <Text style={s.postMetaDot}>·</Text> {post.ago}</Text>
+          <Text style={s.postCommunity}>{post.community} <Text style={s.postMetaDot}>Â·</Text> {post.ago}</Text>
         </View>
-        <Pressable style={s.postMore} onPress={() => setMenuOpen(!menuOpen)}><Text style={s.moreGlyph}>···</Text></Pressable>
+        <Pressable style={s.postMore} onPress={() => setMenuOpen(!menuOpen)}><Text style={s.moreGlyph}>Â·Â·Â·</Text></Pressable>
       </View>
       {menuOpen && (
         <View style={s.postMenu}>
           <Pressable style={s.postMenuItem} onPress={() => { setMenuOpen(false); onReport(); }}>
-            <Text style={s.postMenuText}>⚑  Report post</Text>
+            <Text style={s.postMenuText}>âš‘  Report post</Text>
           </Pressable>
         </View>
       )}
       <View style={s.postSportRow}>
-        <View style={s.sportTag}><Text style={s.sportTagDot}>●</Text><Text style={s.sportTagText}>{post.sport}</Text></View>
-        <View style={s.postPublic}><Text style={s.postPublicText}>◉  Community</Text></View>
+        <View style={s.sportTag}><Text style={s.sportTagDot}>â—</Text><Text style={s.sportTagText}>{post.sport}</Text></View>
+        <View style={s.postPublic}><Text style={s.postPublicText}>â—‰  Community</Text></View>
       </View>
       <Text style={s.postBody}>{post.body}</Text>
       <View style={s.postCounts}><Text>{post.likes} appreciations</Text><Text>{post.comments} comments</Text></View>
       <View style={s.postActions}>
         <Pressable style={s.postAction} onPress={onLike}>
-          <Text style={[s.postActionIcon, post.liked && s.likedIcon]}>{post.liked ? '♥' : '♡'}</Text>
+          <Text style={[s.postActionIcon, post.liked && s.likedIcon]}>{post.liked ? 'â™¥' : 'â™¡'}</Text>
           <Text style={[s.postActionText, post.liked && s.likedText]}>{post.liked ? 'Appreciated' : 'Appreciate'}</Text>
         </Pressable>
         <Pressable style={s.postAction} onPress={onComment}>
-          <Text style={s.postActionIcon}>◌</Text><Text style={s.postActionText}>Comment</Text>
+          <Text style={s.postActionIcon}>â—Œ</Text><Text style={s.postActionText}>Comment</Text>
         </Pressable>
         <Pressable style={s.postAction} onPress={() => Alert.alert('Share this post', 'Sharing links will be available soon.')}>
-          <Text style={s.postActionIcon}>↗</Text><Text style={s.postActionText}>Share</Text>
+          <Text style={s.postActionIcon}>â†—</Text><Text style={s.postActionText}>Share</Text>
         </Pressable>
       </View>
       {commenting && comments.map((c, ci) => (
@@ -448,7 +466,7 @@ function PostCard({ post, comments, index, onLike, onReport, onComment, commenti
       ))}
       {commenting && (
         <View style={s.commentComposer}>
-          <TextInput style={s.commentInput} value={commentText} onChangeText={setCommentText} placeholder="Write a thoughtful comment…" placeholderTextColor={COLORS.placeholder} />
+          <TextInput style={s.commentInput} value={commentText} onChangeText={setCommentText} placeholder="Write a thoughtful commentâ€¦" placeholderTextColor={COLORS.placeholder} />
           <Pressable disabled={!commentText.trim()} onPress={onSubmitComment} style={s.commentSend}>
             <Text style={s.commentSendText}>Send</Text>
           </Pressable>
@@ -506,14 +524,14 @@ function Discover({ communities, setCommunities, accessToken }: {
       </ScrollView>
       <View style={s.sectionHead}>
         <View><Text style={s.sectionTitle}>Popular near you</Text><Text style={s.sectionSub}>Active groups across Sri Lanka</Text></View>
-        <Text style={s.sectionArrow}>⌖</Text>
+        <Text style={s.sectionArrow}>âŒ–</Text>
       </View>
       {visible.map((c) => (
         <View style={s.discoverCard} key={c.id}>
           <View style={[s.discoverIcon, bubbleStyle(c.color)]}><Text style={s.discoverEmoji}>{c.initials}</Text></View>
           <View style={s.discoverInfo}>
             <Text style={s.discoverName}>{c.name}</Text>
-            <Text style={s.discoverMeta}>{c.sport} <Text style={s.postMetaDot}>·</Text> {c.location}</Text>
+            <Text style={s.discoverMeta}>{c.sport} <Text style={s.postMetaDot}>Â·</Text> {c.location}</Text>
             <Text style={s.discoverMembers}>{c.members} players</Text>
           </View>
           <Pressable style={[s.joinButton, c.joined && s.joinedButton]} onPress={() => join(c.id)}>
@@ -523,7 +541,7 @@ function Discover({ communities, setCommunities, accessToken }: {
       ))}
       <View style={s.bottomHint}>
         <Text style={s.bottomHintText}>Looking for a group that isn't here?</Text>
-        <Text style={s.bottomHintLink}>Start a community  →</Text>
+        <Text style={s.bottomHintLink}>Start a community  â†’</Text>
       </View>
     </ScrollView>
   );
@@ -545,7 +563,7 @@ function Alerts({ notifications, setNotifications, onMarkAll, onRead }: {
         <Pressable key={n.id} style={[s.notificationCard, n.unread && s.notificationUnread]}
           onPress={() => { setNotifications((items) => items.map((i) => i.id === n.id ? { ...i, unread: false } : i)); onRead(n.id); }}>
           <View style={[s.notificationIcon, index === 0 ? s.notifWelcome : index === 1 ? s.notifLike : s.notifCommunity]}>
-            <Text>{index === 0 ? '✦' : index === 1 ? '♥' : '◉'}</Text>
+            <Text>{index === 0 ? 'âœ¦' : index === 1 ? 'â™¥' : 'â—‰'}</Text>
           </View>
           <View style={s.notificationCopy}>
             <Text style={s.notificationTitle}>{n.title}</Text>
@@ -571,12 +589,12 @@ function Profile({ name, email, city, interests, roles, workspace, applications,
         <View style={s.profileTop}>
           <View style={s.profileAvatar}>
             <Text style={s.profileAvatarText}>{name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}</Text>
-            <View style={s.profileVerified}><Text style={s.profileVerifiedText}>✓</Text></View>
+            <View style={s.profileVerified}><Text style={s.profileVerifiedText}>âœ“</Text></View>
           </View>
           <View style={s.profileIdentity}>
             <Text style={s.profileName}>{name}</Text>
             <Text style={s.profileEmail}>{email}</Text>
-            <View style={s.profileLocation}><Text style={s.profileLocationIcon}>⌖</Text><Text style={s.profileLocationText}>{city ? ` ${city}, Sri Lanka` : ' Add your location'}</Text></View>
+            <View style={s.profileLocation}><Text style={s.profileLocationIcon}>âŒ–</Text><Text style={s.profileLocationText}>{city ? ` ${city}, Sri Lanka` : ' Add your location'}</Text></View>
           </View>
           <Pressable style={s.editProfile} onPress={onEdit}><Text style={s.editProfileText}>Edit</Text></Pressable>
         </View>
@@ -591,12 +609,12 @@ function Profile({ name, email, city, interests, roles, workspace, applications,
 
       <View style={s.profileSectionHead}>
         <View><Text style={s.sectionTitle}>Your sports</Text><Text style={s.sectionSub}>Pick the games you want to see more of</Text></View>
-        <Text style={s.editPencil}>✎</Text>
+        <Text style={s.editPencil}>âœŽ</Text>
       </View>
       <View style={s.interestCard}>
         {sports.map((sport) => (
           <Pressable key={sport} onPress={() => onToggleInterest(sport)} style={[s.interestChip, interests.includes(sport) && s.interestChipSelected]}>
-            <Text style={[s.interestChipText, interests.includes(sport) && s.interestChipTextSelected]}>{interests.includes(sport) ? '✓  ' : '+  '}{sport}</Text>
+            <Text style={[s.interestChipText, interests.includes(sport) && s.interestChipTextSelected]}>{interests.includes(sport) ? 'âœ“  ' : '+  '}{sport}</Text>
           </Pressable>
         ))}
       </View>
@@ -613,7 +631,7 @@ function Profile({ name, email, city, interests, roles, workspace, applications,
             <Pressable key={item.key} onPress={() => (hasRole ? onWorkspace(item.key) : item.key === 'organizer' ? onOpenOrganizerApp() : undefined)}
               style={[s.workspaceRow, index < workspaces.length - 1 && s.workspaceRowBorder]}>
               <View style={[s.workspaceRoleIcon, isSelected && s.workspaceRoleIconSelected]}>
-                <Text style={s.workspaceRoleGlyph}>{item.key === 'player' ? '♙' : item.key === 'team_manager' ? '♧' : '▦'}</Text>
+                <Text style={s.workspaceRoleGlyph}>{item.key === 'player' ? 'â™™' : item.key === 'team_manager' ? 'â™§' : 'â–¦'}</Text>
               </View>
               <View style={s.workspaceRowCopy}>
                 <Text style={[s.workspaceRowTitle, !hasRole && s.workspaceDisabled]}>{item.label}</Text>
@@ -622,33 +640,33 @@ function Profile({ name, email, city, interests, roles, workspace, applications,
               {hasRole ? (
                 <View style={[s.radio, isSelected && s.radioSelected]}>{isSelected && <View style={s.radioDot} />}</View>
               ) : (
-                <Text style={application?.status === 'Pending' ? s.pendingText : s.workspaceLock}>{application?.status === 'Pending' ? 'PENDING' : '⌑'}</Text>
+                <Text style={application?.status === 'Pending' ? s.pendingText : s.workspaceLock}>{application?.status === 'Pending' ? 'PENDING' : 'âŒ‘'}</Text>
               )}
             </Pressable>
           );
         })}
         <Pressable style={s.applyRoleButton} onPress={onOpenOrganizerApp}>
-          <View style={[s.applyPlus, { backgroundColor: '#D1FAE5' }]}><Text>🎖️</Text></View>
+          <View style={[s.applyPlus, { backgroundColor: '#D1FAE5' }]}><Text>ðŸŽ–ï¸</Text></View>
           <View style={s.applyRoleCopy}>
             <Text style={s.applyRoleTitle}>Tournament Organizer Accreditation</Text>
-            <Text style={s.applyRoleSub}>{roles.includes('organizer') ? 'Verified Organizer · View status & workspace' : 'Apply to host and sanction tournaments'}</Text>
+            <Text style={s.applyRoleSub}>{roles.includes('organizer') ? 'Verified Organizer Â· View status & workspace' : 'Apply to host and sanction tournaments'}</Text>
           </View>
-          <Text style={s.applyChevron}>→</Text>
+          <Text style={s.applyChevron}>â†’</Text>
         </Pressable>
         <Pressable style={s.applyRoleButton} onPress={onApply}>
-          <View style={s.applyPlus}><Text>＋</Text></View>
+          <View style={s.applyPlus}><Text>ï¼‹</Text></View>
           <View style={s.applyRoleCopy}>
             <Text style={s.applyRoleTitle}>{applications.some((a) => a.status === 'Pending') ? 'Apply for another role' : 'Grow into a new role'}</Text>
             <Text style={s.applyRoleSub}>Team manager or tournament organizer</Text>
           </View>
-          <Text style={s.applyChevron}>→</Text>
+          <Text style={s.applyChevron}>â†’</Text>
         </Pressable>
       </View>
 
       <View style={s.settingsCard}>
-        <View style={s.settingsIcon}><Text>⚙</Text></View>
+        <View style={s.settingsIcon}><Text>âš™</Text></View>
         <View style={s.settingsCopy}><Text style={s.settingsTitle}>Account & privacy</Text><Text style={s.settingsSubtitle}>Your login and safety preferences</Text></View>
-        <Text style={s.settingsArrow}>→</Text>
+        <Text style={s.settingsArrow}>â†’</Text>
       </View>
       <Pressable style={s.signOutButton} onPress={onSignOut}><Text style={s.signOutText}>Sign out</Text></Pressable>
     </ScrollView>
@@ -665,8 +683,7 @@ function PageIntro({ eyebrow, title, subtitle }: { eyebrow: string; title: strin
   );
 }
 
-type TabLabel = 'Home' | 'Discover' | 'Sports' | 'Alerts' | 'Profile';
-function TabButton({ icon, label, active, badge, onPress }: { icon: string; label: TabLabel; active: boolean; badge?: number; onPress: () => void }) {
+function TabButton({ icon, label, active, badge, onPress }: { icon: string; label: string; active: boolean; badge?: number; onPress: () => void }) {
   return (
     <Pressable style={s.tabButton} onPress={onPress}>
       <View style={s.tabIconWrap}>
@@ -679,7 +696,7 @@ function TabButton({ icon, label, active, badge, onPress }: { icon: string; labe
   );
 }
 
-// ─── Modals ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ComposerModal({ visible, value, onChange, onClose, onPublish, name }: {
   visible: boolean; value: string; onChange: (v: string) => void; onClose: () => void; onPublish: () => void; name: string;
 }) {
@@ -691,16 +708,16 @@ function ComposerModal({ visible, value, onChange, onClose, onPublish, name }: {
           <View style={s.sheetHandle} />
           <View style={s.sheetHeader}>
             <View><Text style={s.sheetEyebrow}>COMMUNITY UPDATE</Text><Text style={s.sheetTitle}>Share your game</Text></View>
-            <Pressable onPress={onClose} style={s.closeButton}><Text>×</Text></Pressable>
+            <Pressable onPress={onClose} style={s.closeButton}><Text>Ã—</Text></Pressable>
           </View>
           <View style={s.sheetAuthor}>
             <View style={s.quickAvatar}><Text style={s.quickAvatarText}>{name[0]}</Text></View>
             <View><Text style={s.sheetAuthorName}>{name}</Text><Text style={s.sheetAuthorSub}>Sharing with your sports community</Text></View>
           </View>
-          <TextInput style={s.composerInput} multiline value={value} onChangeText={onChange} placeholder="A win, a question, a game to play…" placeholderTextColor={COLORS.placeholder} textAlignVertical="top" maxLength={2000} />
-          <View style={s.composerTools}><Text style={s.composerTool}>◉  Add a sport</Text><Text style={s.characterCount}>{value.length}/2000</Text></View>
+          <TextInput style={s.composerInput} multiline value={value} onChangeText={onChange} placeholder="A win, a question, a game to playâ€¦" placeholderTextColor={COLORS.placeholder} textAlignVertical="top" maxLength={2000} />
+          <View style={s.composerTools}><Text style={s.composerTool}>â—‰  Add a sport</Text><Text style={s.characterCount}>{value.length}/2000</Text></View>
           <Pressable style={[s.primaryButton, !value.trim() && s.disabledButton]} disabled={!value.trim()} onPress={onPublish}>
-            <Text style={s.primaryButtonText}>Post to community  →</Text>
+            <Text style={s.primaryButtonText}>Post to community  â†’</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -718,14 +735,14 @@ function NameModal({ visible, name, setName, city, setCity, onClose, onSave }: {
         <View style={s.nameEditCard}>
           <View style={s.sheetHeader}>
             <View><Text style={s.sheetEyebrow}>YOUR PLAYER PROFILE</Text><Text style={s.sheetTitle}>Edit your profile</Text></View>
-            <Pressable onPress={onClose} style={s.closeButton}><Text>×</Text></Pressable>
+            <Pressable onPress={onClose} style={s.closeButton}><Text>Ã—</Text></Pressable>
           </View>
           <Text style={s.inputLabel}>DISPLAY NAME</Text>
           <TextInput style={s.textInput} value={name} onChangeText={setName} placeholder="Your name" placeholderTextColor={COLORS.placeholder} autoCapitalize="words" />
           <Text style={s.inputLabel}>CITY</Text>
           <TextInput style={s.textInput} value={city} onChangeText={setCity} placeholder="e.g. Colombo" placeholderTextColor={COLORS.placeholder} autoCapitalize="words" />
           <Pressable style={[s.primaryButton, s.nameSaveButton]} onPress={onSave}>
-            <Text style={s.primaryButtonText}>Save changes  →</Text>
+            <Text style={s.primaryButtonText}>Save changes  â†’</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
@@ -746,7 +763,7 @@ function ApplicationModal({ visible, role, setRole, organization, setOrganizatio
           <View style={s.sheetHandle} />
           <View style={s.sheetHeader}>
             <View><Text style={s.sheetEyebrow}>TAKE THE NEXT STEP</Text><Text style={s.sheetTitle}>Apply for a role</Text></View>
-            <Pressable onPress={onClose} style={s.closeButton}><Text>×</Text></Pressable>
+            <Pressable onPress={onClose} style={s.closeButton}><Text>Ã—</Text></Pressable>
           </View>
           <Text style={s.modalDescription}>Tell us a little about your experience. Our team will review your application.</Text>
           <Text style={s.inputLabel}>I'M APPLYING AS A</Text>
@@ -754,16 +771,16 @@ function ApplicationModal({ visible, role, setRole, organization, setOrganizatio
             {workspaces.slice(1).map((item) => (
               <Pressable key={item.key} onPress={() => setRole(item.key as Exclude<Workspace, 'player'>)}
                 style={[s.roleChoice, role === item.key && s.roleChoiceActive]}>
-                <Text style={[s.roleChoiceText, role === item.key && s.roleChoiceTextActive]}>{item.key === 'team_manager' ? '♧  Team manager' : '▦  Organizer'}</Text>
+                <Text style={[s.roleChoiceText, role === item.key && s.roleChoiceTextActive]}>{item.key === 'team_manager' ? 'â™§  Team manager' : 'â–¦  Organizer'}</Text>
               </Pressable>
             ))}
           </View>
           <Text style={s.inputLabel}>TEAM OR ORGANIZATION</Text>
           <TextInput style={s.textInput} value={organization} onChangeText={setOrganization} placeholder="e.g. Colombo Strikers" placeholderTextColor={COLORS.placeholder} />
           <Text style={s.inputLabel}>YOUR EXPERIENCE</Text>
-          <TextInput style={[s.textInput, s.experienceInput]} value={experience} onChangeText={setExperience} placeholder="Share your experience…" placeholderTextColor={COLORS.placeholder} multiline textAlignVertical="top" />
-          <View style={s.reviewNotice}><Text style={s.reviewNoticeIcon}>ⓘ</Text><Text style={s.reviewNoticeText}>If approved, this role will appear as a new workspace on your profile.</Text></View>
-          <Pressable style={s.primaryButton} onPress={onSubmit}><Text style={s.primaryButtonText}>Send application  →</Text></Pressable>
+          <TextInput style={[s.textInput, s.experienceInput]} value={experience} onChangeText={setExperience} placeholder="Share your experienceâ€¦" placeholderTextColor={COLORS.placeholder} multiline textAlignVertical="top" />
+          <View style={s.reviewNotice}><Text style={s.reviewNoticeIcon}>â“˜</Text><Text style={s.reviewNoticeText}>If approved, this role will appear as a new workspace on your profile.</Text></View>
+          <Pressable style={s.primaryButton} onPress={onSubmit}><Text style={s.primaryButtonText}>Send application  â†’</Text></Pressable>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -779,7 +796,7 @@ function ReportModal({ visible, reason, setReason, onClose, onSubmit }: {
       <View style={s.confirmBackdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={s.confirmCard}>
-          <View style={s.confirmIcon}><Text>⚑</Text></View>
+          <View style={s.confirmIcon}><Text>âš‘</Text></View>
           <Text style={s.confirmTitle}>Report this post</Text>
           <Text style={s.confirmDescription}>Choose the reason that best describes your concern. Reports are private.</Text>
           <View style={{ marginTop: 10 }}>
@@ -800,7 +817,7 @@ function ReportModal({ visible, reason, setReason, onClose, onSubmit }: {
   );
 }
 
-// ─── All styles (ported 1:1 from original App.tsx) ──────────────────────────
+// â”€â”€â”€ All styles (ported 1:1 from original App.tsx) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.paper }, appFrame: { flex: 1, backgroundColor: COLORS.paper },
   header: { minHeight: 61, paddingHorizontal: 21, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E9E6E0', backgroundColor: COLORS.paper },
