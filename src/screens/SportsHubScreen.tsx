@@ -3,10 +3,10 @@ import {
   StatusBar,
   StyleSheet,
   useColorScheme,
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
+  ScrollView,
 } from 'react-native';
 import { VenuesScreen } from './VenuesScreen';
 import { VenueDetailsScreen } from './VenueDetailsScreen';
@@ -17,11 +17,15 @@ import { Venue } from '../types/venue.types';
 import { Match } from '../types/match.types';
 import { Colors } from '../theme/colors';
 
-type Tab = 'matches' | 'live' | 'venues' | 'stats';
+export type SportsHubTab = 'venues' | 'matches' | 'live' | 'stats';
 
-export default function SportsHubScreen(): React.JSX.Element {
+interface SportsHubScreenProps {
+  initialTab?: SportsHubTab;
+}
+
+export default function SportsHubScreen({ initialTab = 'venues' }: SportsHubScreenProps): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
-  const [currentTab, setCurrentTab] = useState<Tab>('matches');
+  const [currentTab, setCurrentTab] = useState<SportsHubTab>(initialTab);
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
@@ -31,8 +35,69 @@ export default function SportsHubScreen(): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+    <View style={styles.container}>
+      {/* Top Segmented Sub-navigation Bar */}
+      <View style={styles.topSegmentBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.topSegmentScroll}
+        >
+          <TouchableOpacity
+            style={[styles.segmentPill, currentTab === 'venues' && styles.segmentPillActive]}
+            onPress={() => {
+              setCurrentTab('venues');
+              setSelectedVenue(null);
+            }}
+          >
+            <Text style={styles.segmentIcon}>🏟️</Text>
+            <Text style={[styles.segmentLabel, currentTab === 'venues' && styles.segmentLabelActive]}>
+              Venues & Grounds
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.segmentPill, currentTab === 'matches' && styles.segmentPillActive]}
+            onPress={() => {
+              setCurrentTab('matches');
+              setSelectedVenue(null);
+            }}
+          >
+            <Text style={styles.segmentIcon}>🏏</Text>
+            <Text style={[styles.segmentLabel, currentTab === 'matches' && styles.segmentLabelActive]}>
+              Matches
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.segmentPill, currentTab === 'live' && styles.segmentPillActive]}
+            onPress={() => {
+              setCurrentTab('live');
+              setSelectedVenue(null);
+            }}
+          >
+            <Text style={styles.segmentIcon}>🔴</Text>
+            <Text style={[styles.segmentLabel, currentTab === 'live' && styles.segmentLabelActive]}>
+              Live Score
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.segmentPill, currentTab === 'stats' && styles.segmentPillActive]}
+            onPress={() => {
+              setCurrentTab('stats');
+              setSelectedVenue(null);
+            }}
+          >
+            <Text style={styles.segmentIcon}>📊</Text>
+            <Text style={[styles.segmentLabel, currentTab === 'stats' && styles.segmentLabelActive]}>
+              Statistics
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+
+      {/* Screen Content */}
       <View style={styles.content}>
         {currentTab === 'live' ? (
           <LiveMatchScreen matchId={selectedMatch?.id} onBack={() => setCurrentTab('matches')} />
@@ -46,52 +111,54 @@ export default function SportsHubScreen(): React.JSX.Element {
           <VenuesScreen onSelectVenue={setSelectedVenue} />
         )}
       </View>
-
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={[styles.navItem, currentTab === 'matches' && styles.navItemActive]}
-          onPress={() => { setCurrentTab('matches'); setSelectedVenue(null); }}
-        >
-          <Text style={styles.navIcon}>🏆</Text>
-          <Text style={[styles.navLabel, currentTab === 'matches' && styles.navLabelActive]}>Matches</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navItem, currentTab === 'live' && styles.navItemActive]}
-          onPress={() => { setCurrentTab('live'); setSelectedVenue(null); }}
-        >
-          <Text style={styles.navIcon}>🔴</Text>
-          <Text style={[styles.navLabel, currentTab === 'live' && styles.navLabelActive]}>Live</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navItem, currentTab === 'venues' && styles.navItemActive]}
-          onPress={() => { setCurrentTab('venues'); setSelectedVenue(null); }}
-        >
-          <Text style={styles.navIcon}>🏟️</Text>
-          <Text style={[styles.navLabel, currentTab === 'venues' && styles.navLabelActive]}>Venues</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.navItem, currentTab === 'stats' && styles.navItemActive]}
-          onPress={() => { setCurrentTab('stats'); setSelectedVenue(null); }}
-        >
-          <Text style={styles.navIcon}>📊</Text>
-          <Text style={[styles.navLabel, currentTab === 'stats' && styles.navLabelActive]}>Stats</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
-  content: { flex: 1 },
-  bottomNav: {
-    flexDirection: 'row', height: 60, backgroundColor: Colors.card,
-    borderTopWidth: 1, borderTopColor: Colors.border, paddingHorizontal: 12,
-    justifyContent: 'space-around', alignItems: 'center',
+  container: {
+    flex: 1,
+    backgroundColor: Colors.background,
   },
-  navItem: { alignItems: 'center', justifyContent: 'center', paddingVertical: 4, paddingHorizontal: 12, borderRadius: 12 },
-  navItemActive: { backgroundColor: Colors.primaryLight },
-  navIcon: { fontSize: 18, marginBottom: 2 },
-  navLabel: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
-  navLabelActive: { color: Colors.primaryDark, fontWeight: '800' },
+  topSegmentBar: {
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    paddingVertical: 8,
+  },
+  topSegmentScroll: {
+    paddingHorizontal: 12,
+    gap: 8,
+    flexDirection: 'row',
+  },
+  segmentPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  segmentPillActive: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#059669',
+  },
+  segmentIcon: {
+    fontSize: 13,
+    marginRight: 6,
+  },
+  segmentLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  segmentLabelActive: {
+    color: '#059669',
+    fontWeight: '700',
+  },
+  content: {
+    flex: 1,
+  },
 });
