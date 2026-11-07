@@ -540,15 +540,9 @@ export default function MainApp() {
         />
       </Modal>
 
-      {/* Member 2: Teams & Squads Modal */}
+      {/* Teams & Squads Modal */}
       <Modal visible={teamsModalOpen} animationType="slide" onRequestClose={() => setTeamsModalOpen(false)}>
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' }}>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: '#111827' }}>Team & Squad Management</Text>
-            <TouchableOpacity onPress={() => setTeamsModalOpen(false)} style={{ padding: 6 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#6B7280' }}>✕ Close</Text>
-            </TouchableOpacity>
-          </View>
           <TeamsScreen onBack={() => setTeamsModalOpen(false)} />
         </SafeAreaView>
       </Modal>
@@ -1115,9 +1109,9 @@ function Profile({
         </View>
       </View>
 
-      {/* Member 2: Teams & Squads Card */}
+      {/* Teams & Squads Card */}
       <View style={s.profileSectionHead}>
-        <View><Text style={s.sectionTitle}>Team & Squad Management</Text><Text style={s.sectionSub}>Member 2: Squad roster, invitations & challenges</Text></View>
+        <View><Text style={s.sectionTitle}>Team & Squad Management</Text><Text style={s.sectionSub}>Squad roster, invitations & challenges</Text></View>
       </View>
       <View style={s.teamsPromoCard}>
         <View style={s.teamsPromoHeader}>
