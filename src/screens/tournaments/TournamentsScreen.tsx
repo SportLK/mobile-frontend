@@ -242,10 +242,7 @@ export default function TournamentsScreen({
     <View style={s.container}>
       {/* Top Header */}
       <View style={s.header}>
-        <View>
-          <Text style={s.headerKicker}>MEMBER 3 MODULE</Text>
-          <Text style={s.headerTitle}>Tournaments</Text>
-        </View>
+        <Text style={s.headerTitle}>Tournaments</Text>
         {isOrganizer ? (
           <TouchableOpacity style={s.organizerBtn} onPress={onOpenOrganizerWorkspace}>
             <Text style={s.organizerBtnText}>Organizer Workspace ⚙️</Text>
