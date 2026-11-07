@@ -1,6 +1,6 @@
 // Shared types for SportLK mobile app
 
-export type Tab = 'Home' | 'Discover' | 'Alerts' | 'Profile';
+export type Tab = 'Home' | 'Community' | 'Tournaments' | 'Venues' | 'Profile';
 export type Workspace = 'player' | 'team_manager' | 'organizer';
 export type FeedPost = {
   id: string;
