@@ -10,270 +10,472 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { COLORS } from '../../constants/colors';
-import { apiRequest } from '../../api';
 import { useAuth } from '../../context/AuthContext';
-
-export interface TeamMember {
-  id: string;
-  name: string;
-  role: 'Captain' | 'Vice-Captain' | 'Player' | 'Coach';
-  jerseyNumber?: number;
-  joinedAt?: string;
-}
-
-export interface TeamChallenge {
-  id: string;
-  challengerTeam: string;
-  targetTeam: string;
-  sport: string;
-  venue: string;
-  date: string;
-  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED';
-}
-
-export interface TeamItem {
-  id: string;
-  name: string;
-  sport: string;
-  city: string;
-  bio?: string;
-  managerName?: string;
-  membersCount: number;
-  members: TeamMember[];
-  isMyTeam?: boolean;
-}
-
-const DEMO_TEAMS: TeamItem[] = [
-  {
-    id: 'team-demo-1',
-    name: 'Colombo Lions Cricket Club',
-    sport: 'Cricket',
-    city: 'Colombo',
-    bio: 'Premier grassroots cricket club competing in Colombo Division tournaments.',
-    managerName: 'Avishka Perera',
-    membersCount: 15,
-    isMyTeam: true,
-    members: [
-      { id: 'm-1', name: 'Avishka Perera', role: 'Captain', jerseyNumber: 7 },
-      { id: 'm-2', name: 'Kusal Silva', role: 'Vice-Captain', jerseyNumber: 18 },
-      { id: 'm-3', name: 'Dinesh Mendis', role: 'Player', jerseyNumber: 45 },
-      { id: 'm-4', name: 'Nuwan Pradeep', role: 'Player', jerseyNumber: 99 },
-      { id: 'm-5', name: 'Sanath Fernando', role: 'Coach', jerseyNumber: 1 },
-    ],
-  },
-  {
-    id: 'team-demo-2',
-    name: 'Kandy Thunder Futsal',
-    sport: 'Football',
-    city: 'Kandy',
-    bio: 'Fast-paced 5v5 futsal squad training at Kandy Sports Complex.',
-    managerName: 'Roshan De Silva',
-    membersCount: 8,
-    isMyTeam: false,
-    members: [
-      { id: 'm-6', name: 'Roshan De Silva', role: 'Captain', jerseyNumber: 10 },
-      { id: 'm-7', name: 'Kasun Bandara', role: 'Player', jerseyNumber: 9 },
-      { id: 'm-8', name: 'Tharindu Gamage', role: 'Player', jerseyNumber: 3 },
-    ],
-  },
-  {
-    id: 'team-demo-3',
-    name: 'Galle Smashers Badminton',
-    sport: 'Badminton',
-    city: 'Galle',
-    bio: 'Competitive doubles and singles badminton squad based in Galle.',
-    managerName: 'Kamal Jayawardena',
-    membersCount: 6,
-    isMyTeam: false,
-    members: [
-      { id: 'm-9', name: 'Kamal Jayawardena', role: 'Captain' },
-      { id: 'm-10', name: 'Sahan Wickrama', role: 'Player' },
-    ],
-  },
-];
-
-const DEMO_CHALLENGES: TeamChallenge[] = [
-  {
-    id: 'ch-1',
-    challengerTeam: 'Kandy Thunder Futsal',
-    targetTeam: 'Colombo Lions Cricket Club',
-    sport: 'Football',
-    venue: 'CR&FC Grounds, Colombo',
-    date: 'Saturday, Nov 14, 2026',
-    status: 'PENDING',
-  },
-  {
-    id: 'ch-2',
-    challengerTeam: 'Colombo Lions Cricket Club',
-    targetTeam: 'Negombo Strikers CC',
-    sport: 'Cricket',
-    venue: 'Colombo Oval',
-    date: 'Sunday, Nov 22, 2026',
-    status: 'ACCEPTED',
-  },
-];
+import { teamService } from '../../services/teamService';
+import {
+  Team,
+  TeamMember,
+  TeamInvitation,
+  TeamChallenge,
+  SportType,
+  TeamMemberRole,
+} from '../../types/team.types';
 
 interface TeamsScreenProps {
   onBack?: () => void;
 }
 
+// ── Realistic Grassroots Mock Fallback Data ──────────────────────────────────
+const FALLBACK_TEAMS: Team[] = [
+  {
+    id: 'team-demo-1',
+    managerId: 'user-manager-1',
+    teamName: 'Colombo Lions Cricket Club',
+    sportType: 'CRICKET',
+    primaryLocationCity: 'Colombo',
+    teamBio: 'Premier grassroots cricket club competing in the Colombo Division League. Home to passionate athletes training at the Colombo Oval.',
+    status: 'ACTIVE',
+    createdAt: '2026-01-15',
+    playersCount: 5,
+    manager: {
+      id: 'user-manager-1',
+      displayName: 'Avishka Perera',
+      email: 'avishka@sportlk.com',
+    },
+    members: [
+      {
+        id: 'm-1',
+        teamId: 'team-demo-1',
+        userId: 'user-manager-1',
+        memberRole: 'CAPTAIN',
+        jerseyNumber: 7,
+        joinedAt: '2026-01-15',
+        user: { id: 'user-manager-1', displayName: 'Avishka Perera', email: 'avishka@sportlk.com' },
+      },
+      {
+        id: 'm-2',
+        teamId: 'team-demo-1',
+        userId: 'u-2',
+        memberRole: 'VICE_CAPTAIN',
+        jerseyNumber: 18,
+        joinedAt: '2026-01-20',
+        user: { id: 'u-2', displayName: 'Kusal Mendis', email: 'kusal@sportlk.com' },
+      },
+      {
+        id: 'm-3',
+        teamId: 'team-demo-1',
+        userId: 'u-3',
+        memberRole: 'SQUAD_PLAYER',
+        jerseyNumber: 45,
+        joinedAt: '2026-02-01',
+        user: { id: 'u-3', displayName: 'Dinesh Chandimal', email: 'dinesh@sportlk.com' },
+      },
+      {
+        id: 'm-4',
+        teamId: 'team-demo-1',
+        userId: 'u-4',
+        memberRole: 'SQUAD_PLAYER',
+        jerseyNumber: 99,
+        joinedAt: '2026-02-10',
+        user: { id: 'u-4', displayName: 'Nuwan Pradeep', email: 'nuwan@sportlk.com' },
+      },
+      {
+        id: 'm-5',
+        teamId: 'team-demo-1',
+        userId: 'u-5',
+        memberRole: 'SQUAD_PLAYER',
+        jerseyNumber: 23,
+        joinedAt: '2026-02-15',
+        user: { id: 'u-5', displayName: 'Sanath Fernando', email: 'sanath@sportlk.com' },
+      },
+    ],
+  },
+  {
+    id: 'team-demo-2',
+    managerId: 'u-roshan',
+    teamName: 'Kandy Thunder Futsal',
+    sportType: 'FOOTBALL',
+    primaryLocationCity: 'Kandy',
+    teamBio: 'Dynamic 5v5 futsal squad training at Kandy Sports Complex. Looking for fast wingers and competitive friendly matches.',
+    status: 'ACTIVE',
+    createdAt: '2026-02-01',
+    playersCount: 4,
+    manager: {
+      id: 'u-roshan',
+      displayName: 'Roshan De Silva',
+      email: 'roshan@kandy.lk',
+    },
+    members: [
+      {
+        id: 'm-6',
+        teamId: 'team-demo-2',
+        userId: 'u-roshan',
+        memberRole: 'CAPTAIN',
+        jerseyNumber: 10,
+        joinedAt: '2026-02-01',
+        user: { id: 'u-roshan', displayName: 'Roshan De Silva', email: 'roshan@kandy.lk' },
+      },
+      {
+        id: 'm-7',
+        teamId: 'team-demo-2',
+        userId: 'u-kasun',
+        memberRole: 'VICE_CAPTAIN',
+        jerseyNumber: 9,
+        joinedAt: '2026-02-05',
+        user: { id: 'u-kasun', displayName: 'Kasun Bandara', email: 'kasun@kandy.lk' },
+      },
+    ],
+  },
+  {
+    id: 'team-demo-3',
+    managerId: 'u-kamal',
+    teamName: 'Galle Smashers Badminton',
+    sportType: 'BADMINTON',
+    primaryLocationCity: 'Galle',
+    teamBio: 'Competitive badminton squad based in Southern Province. Active in regional doubles and singles fixtures.',
+    status: 'ACTIVE',
+    createdAt: '2026-02-15',
+    playersCount: 3,
+    manager: {
+      id: 'u-kamal',
+      displayName: 'Kamal Jayawardena',
+      email: 'kamal@galle.lk',
+    },
+    members: [
+      {
+        id: 'm-8',
+        teamId: 'team-demo-3',
+        userId: 'u-kamal',
+        memberRole: 'CAPTAIN',
+        jerseyNumber: 1,
+        joinedAt: '2026-02-15',
+        user: { id: 'u-kamal', displayName: 'Kamal Jayawardena', email: 'kamal@galle.lk' },
+      },
+    ],
+  },
+];
+
+const FALLBACK_INVITATIONS: TeamInvitation[] = [
+  {
+    id: 'inv-1',
+    teamId: 'team-demo-1',
+    invitedUserId: 'u-sahan',
+    inviteType: 'MANAGER_TO_PLAYER',
+    status: 'PENDING',
+    createdAt: '2026-11-01',
+    invitedUser: { id: 'u-sahan', displayName: 'Sahan Wickramasinghe', email: 'sahan@sportlk.com' },
+  },
+];
+
+const FALLBACK_JOIN_REQUESTS: TeamInvitation[] = [
+  {
+    id: 'req-1',
+    teamId: 'team-demo-1',
+    invitedUserId: 'u-charith',
+    inviteType: 'PLAYER_REQUEST_TO_JOIN',
+    status: 'PENDING',
+    createdAt: '2026-11-05',
+    invitedUser: { id: 'u-charith', displayName: 'Charith Asalanka', email: 'charith@sportlk.com' },
+  },
+];
+
+const FALLBACK_CHALLENGES: TeamChallenge[] = [
+  {
+    id: 'ch-1',
+    challengerTeamId: 'team-demo-2',
+    challengedTeamId: 'team-demo-1',
+    sportType: 'FOOTBALL',
+    proposedMatchDate: '2026-11-20T16:00:00Z',
+    status: 'PENDING',
+    venueName: 'CR&FC Grounds, Colombo',
+    createdAt: '2026-11-04',
+    challengerTeam: FALLBACK_TEAMS[1],
+    challengedTeam: FALLBACK_TEAMS[0],
+  },
+  {
+    id: 'ch-2',
+    challengerTeamId: 'team-demo-1',
+    challengedTeamId: 'team-demo-3',
+    sportType: 'CRICKET',
+    proposedMatchDate: '2026-11-28T14:30:00Z',
+    status: 'ACCEPTED',
+    venueName: 'Colombo Oval',
+    createdAt: '2026-11-02',
+    challengerTeam: FALLBACK_TEAMS[0],
+    challengedTeam: FALLBACK_TEAMS[2],
+  },
+];
+
 export default function TeamsScreen({ onBack }: TeamsScreenProps) {
-  const { accessToken, userName } = useAuth();
-  const [activeSubTab, setActiveSubTab] = useState<'my_teams' | 'browse' | 'challenges'>('my_teams');
-  const [teams, setTeams] = useState<TeamItem[]>(DEMO_TEAMS);
-  const [challenges, setChallenges] = useState<TeamChallenge[]>(DEMO_CHALLENGES);
-  const [loading, setLoading] = useState(false);
+  const { accessToken, userName, userEmail } = useAuth();
+
+  // Navigation & Sub-views
+  const [mainTab, setMainTab] = useState<'my_teams' | 'browse' | 'challenges'>('my_teams');
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [teamProfileTab, setTeamProfileTab] = useState<'roster' | 'join_requests' | 'invitations' | 'challenges'>('roster');
+
+  // Data states
+  const [teams, setTeams] = useState<Team[]>(FALLBACK_TEAMS);
+  const [invitations, setInvitations] = useState<TeamInvitation[]>(FALLBACK_INVITATIONS);
+  const [joinRequests, setJoinRequests] = useState<TeamInvitation[]>(FALLBACK_JOIN_REQUESTS);
+  const [challenges, setChallenges] = useState<TeamChallenge[]>(FALLBACK_CHALLENGES);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [selectedSport, setSelectedSport] = useState('All');
 
   // Modals
   const [createTeamModal, setCreateTeamModal] = useState(false);
-  const [selectedTeam, setSelectedTeam] = useState<TeamItem | null>(null);
+  const [editTeamModal, setEditTeamModal] = useState(false);
   const [addMemberModal, setAddMemberModal] = useState(false);
+  const [editMemberModal, setEditMemberModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
+  const [inviteModal, setInviteModal] = useState(false);
   const [challengeModal, setChallengeModal] = useState(false);
 
-  // Form states
-  const [teamName, setTeamName] = useState('');
-  const [teamSport, setTeamSport] = useState('Cricket');
-  const [teamCity, setTeamCity] = useState('Colombo');
-  const [teamBio, setTeamBio] = useState('');
+  // Form fields: Team
+  const [formTeamName, setFormTeamName] = useState('');
+  const [formSportType, setFormSportType] = useState<SportType>('CRICKET');
+  const [formCity, setFormCity] = useState('Colombo');
+  const [formBio, setFormBio] = useState('');
 
-  const [newMemberName, setNewMemberName] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState<'Captain' | 'Vice-Captain' | 'Player' | 'Coach'>('Player');
-  const [newMemberJersey, setNewMemberJersey] = useState('');
+  // Form fields: Member & Role
+  const [formMemberName, setFormMemberName] = useState('');
+  const [formMemberRole, setFormMemberRole] = useState<TeamMemberRole>('SQUAD_PLAYER');
+  const [formJersey, setFormJersey] = useState('');
 
-  const [challengeTargetTeam, setChallengeTargetTeam] = useState('');
-  const [challengeSport, setChallengeSport] = useState('Cricket');
-  const [challengeVenue, setChallengeVenue] = useState('Colombo Oval');
-  const [challengeDate, setChallengeDate] = useState('Upcoming Weekend');
+  // Form fields: Invite & Challenge
+  const [formInviteUser, setFormInviteUser] = useState('');
+  const [formChallengeTargetId, setFormChallengeTargetId] = useState('');
+  const [formChallengeVenue, setFormChallengeVenue] = useState('Colombo Oval');
+  const [formChallengeDate, setFormChallengeDate] = useState('2026-11-25T15:00:00Z');
 
-  const fetchTeams = useCallback(async () => {
+  // Load teams & related records
+  const loadData = useCallback(async () => {
     try {
-      const data = await apiRequest<any[]>('/teams', {}, accessToken);
+      const data = await teamService.getTeams({
+        sportType: selectedSport === 'All' ? undefined : selectedSport.toUpperCase(),
+        search: search.trim() || undefined,
+      });
       if (Array.isArray(data) && data.length > 0) {
-        const mapped: TeamItem[] = data.map((t: any) => ({
-          id: t.id,
-          name: t.name || t.teamName,
-          sport: t.sportType || t.sport || 'Cricket',
-          city: t.city || 'Colombo',
-          bio: t.description || t.bio || '',
-          managerName: t.manager?.displayName || t.managerName || userName,
-          membersCount: t.membersCount || (t.members ? t.members.length : 1),
-          isMyTeam: t.managerId === userName || true,
-          members: Array.isArray(t.members) ? t.members : [],
-        }));
-        setTeams(mapped);
+        setTeams(data);
       }
     } catch {
-      // Keep demo teams
+      // Kept fallback teams
     }
-  }, [accessToken, userName]);
+  }, [selectedSport, search]);
 
   useEffect(() => {
-    fetchTeams();
-  }, [fetchTeams]);
+    loadData();
+  }, [loadData]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchTeams();
+    await loadData();
     setRefreshing(false);
   };
 
+  // Helper: check if logged-in user manages this team
+  const isManagerOfTeam = (team: Team) => {
+    return (
+      team.managerId === userName ||
+      team.manager?.displayName === userName ||
+      team.manager?.email === userEmail ||
+      team.id === 'team-demo-1'
+    );
+  };
+
+  // ── 1. Create Team ─────────────────────────────────────────────────────────
   const handleCreateTeam = async () => {
-    if (!teamName.trim()) {
-      Alert.alert('Required', 'Please enter a team name');
+    if (!formTeamName.trim()) {
+      Alert.alert('Required', 'Please enter a valid team name');
       return;
     }
 
-    const newTeam: TeamItem = {
+    const newTeam: Team = {
       id: `team-local-${Date.now()}`,
-      name: teamName.trim(),
-      sport: teamSport,
-      city: teamCity.trim() || 'Colombo',
-      bio: teamBio.trim(),
-      managerName: userName,
-      membersCount: 1,
-      isMyTeam: true,
+      managerId: userName,
+      teamName: formTeamName.trim(),
+      sportType: formSportType,
+      primaryLocationCity: formCity.trim() || 'Colombo',
+      teamBio: formBio.trim(),
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString().split('T')[0],
+      playersCount: 1,
+      manager: {
+        id: userName,
+        displayName: userName,
+        email: userEmail,
+      },
       members: [
         {
           id: `m-${Date.now()}`,
-          name: userName,
-          role: 'Captain',
+          teamId: `team-local-${Date.now()}`,
+          userId: userName,
+          memberRole: 'CAPTAIN',
           jerseyNumber: 1,
+          joinedAt: new Date().toISOString().split('T')[0],
+          user: { id: userName, displayName: userName, email: userEmail },
         },
       ],
     };
 
     try {
       if (accessToken) {
-        await apiRequest('/teams', {
-          method: 'POST',
-          body: JSON.stringify({
-            teamName: newTeam.name,
-            sportType: newTeam.sport.toUpperCase(),
-            city: newTeam.city,
-            description: newTeam.bio,
-          }),
-        }, accessToken);
+        const created = await teamService.createTeam(
+          {
+            managerId: userName,
+            teamName: newTeam.teamName,
+            sportType: newTeam.sportType,
+            primaryLocationCity: newTeam.primaryLocationCity || undefined,
+            teamBio: newTeam.teamBio || undefined,
+          },
+          accessToken,
+        );
+        if (created?.id) newTeam.id = created.id;
       }
     } catch {
-      // Local fallback
+      // Fallback local creation
     }
 
     setTeams((prev) => [newTeam, ...prev]);
     setCreateTeamModal(false);
-    setTeamName('');
-    setTeamBio('');
-    Alert.alert('Success', `Team "${newTeam.name}" created successfully!`);
+    setFormTeamName('');
+    setFormBio('');
+    Alert.alert('Team Created', `"${newTeam.teamName}" has been established! You are registered as Captain.`);
   };
 
-  const handleAddMember = async () => {
-    if (!selectedTeam || !newMemberName.trim()) {
-      Alert.alert('Required', 'Please enter player name');
-      return;
-    }
+  // ── 1b. Update Team Profile ────────────────────────────────────────────────
+  const handleUpdateTeamProfile = async () => {
+    if (!selectedTeam) return;
 
-    const member: TeamMember = {
-      id: `m-loc-${Date.now()}`,
-      name: newMemberName.trim(),
-      role: newMemberRole,
-      jerseyNumber: newMemberJersey ? parseInt(newMemberJersey, 10) : undefined,
+    const updated: Team = {
+      ...selectedTeam,
+      teamName: formTeamName.trim() || selectedTeam.teamName,
+      primaryLocationCity: formCity.trim() || selectedTeam.primaryLocationCity,
+      teamBio: formBio.trim() || selectedTeam.teamBio,
     };
 
     try {
       if (accessToken && !selectedTeam.id.startsWith('team-demo-')) {
-        await apiRequest(`/teams/${selectedTeam.id}/members`, {
-          method: 'POST',
-          body: JSON.stringify({
-            userId: member.name,
-            role: member.role,
-            jerseyNumber: member.jerseyNumber,
-          }),
-        }, accessToken);
+        await teamService.updateTeam(
+          selectedTeam.id,
+          {
+            teamName: updated.teamName,
+            primaryLocationCity: updated.primaryLocationCity || undefined,
+            teamBio: updated.teamBio || undefined,
+          },
+          accessToken,
+        );
       }
     } catch {
-      // Local fallback
+      // Fallback
     }
-
-    const updated = {
-      ...selectedTeam,
-      membersCount: selectedTeam.membersCount + 1,
-      members: [...selectedTeam.members, member],
-    };
 
     setSelectedTeam(updated);
     setTeams((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-    setAddMemberModal(false);
-    setNewMemberName('');
-    setNewMemberJersey('');
-    Alert.alert('Member Added', `${member.name} has been added to the squad roster.`);
+    setEditTeamModal(false);
+    Alert.alert('Profile Updated', 'Team details have been updated.');
   };
 
-  const handleRemoveMember = async (memberId: string) => {
+  // ── 2 & 4. Add Member to Roster ───────────────────────────────────────────
+  const handleAddMember = async () => {
+    if (!selectedTeam || !formMemberName.trim()) {
+      Alert.alert('Required', 'Please enter player name or username');
+      return;
+    }
+
+    const newMember: TeamMember = {
+      id: `m-${Date.now()}`,
+      teamId: selectedTeam.id,
+      userId: formMemberName.trim(),
+      memberRole: formMemberRole,
+      jerseyNumber: formJersey ? parseInt(formJersey, 10) : undefined,
+      joinedAt: new Date().toISOString().split('T')[0],
+      user: {
+        id: formMemberName.trim(),
+        displayName: formMemberName.trim(),
+        email: `${formMemberName.trim().toLowerCase().replace(/\s+/g, '')}@sportlk.com`,
+      },
+    };
+
+    try {
+      if (accessToken && !selectedTeam.id.startsWith('team-demo-')) {
+        await teamService.addTeamMember(
+          selectedTeam.id,
+          {
+            userId: newMember.userId,
+            memberRole: newMember.memberRole,
+            jerseyNumber: newMember.jerseyNumber || undefined,
+          },
+          accessToken,
+        );
+      }
+    } catch {
+      // Fallback
+    }
+
+    const currentMembers = selectedTeam.members || [];
+    const updatedTeam = {
+      ...selectedTeam,
+      playersCount: (selectedTeam.playersCount || currentMembers.length) + 1,
+      members: [...currentMembers, newMember],
+    };
+
+    setSelectedTeam(updatedTeam);
+    setTeams((prev) => prev.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)));
+    setAddMemberModal(false);
+    setFormMemberName('');
+    setFormJersey('');
+    Alert.alert('Player Added', `${newMember.user?.displayName} has been added to the squad roster.`);
+  };
+
+  // ── 4b. Update Member Role & Jersey ────────────────────────────────────────
+  const handleUpdateMemberRole = async () => {
+    if (!selectedTeam || !selectedMember) return;
+
+    const updatedMembers = (selectedTeam.members || []).map((m) => {
+      if (m.id === selectedMember.id) {
+        return {
+          ...m,
+          memberRole: formMemberRole,
+          jerseyNumber: formJersey ? parseInt(formJersey, 10) : m.jerseyNumber,
+        };
+      }
+      return m;
+    });
+
+    try {
+      if (accessToken && !selectedTeam.id.startsWith('team-demo-')) {
+        await teamService.updateMemberRole(
+          selectedTeam.id,
+          selectedMember.id,
+          {
+            memberRole: formMemberRole,
+            jerseyNumber: formJersey ? parseInt(formJersey, 10) : undefined,
+          },
+          accessToken,
+        );
+      }
+    } catch {
+      // Fallback
+    }
+
+    const updatedTeam = { ...selectedTeam, members: updatedMembers };
+    setSelectedTeam(updatedTeam);
+    setTeams((prev) => prev.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)));
+    setEditMemberModal(false);
+    setSelectedMember(null);
+    Alert.alert('Roster Updated', 'Player role and jersey number updated.');
+  };
+
+  // ── 4c. Remove Member ──────────────────────────────────────────────────────
+  const handleRemoveMember = (member: TeamMember) => {
     if (!selectedTeam) return;
 
-    Alert.alert('Remove Player', 'Are you sure you want to remove this player from the squad?', [
+    Alert.alert('Remove Player', `Remove ${member.user?.displayName || 'player'} from the roster?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
@@ -281,69 +483,245 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
         onPress: async () => {
           try {
             if (accessToken && !selectedTeam.id.startsWith('team-demo-')) {
-              await apiRequest(`/teams/${selectedTeam.id}/members/${memberId}`, {
-                method: 'DELETE',
-              }, accessToken);
+              await teamService.removeTeamMember(selectedTeam.id, member.id, accessToken);
             }
           } catch {
-            // Local fallback
+            // Fallback
           }
 
-          const updated = {
+          const currentMembers = selectedTeam.members || [];
+          const updatedMembers = currentMembers.filter((m) => m.id !== member.id);
+          const updatedTeam = {
             ...selectedTeam,
-            membersCount: Math.max(1, selectedTeam.membersCount - 1),
-            members: selectedTeam.members.filter((m) => m.id !== memberId),
+            playersCount: Math.max(1, (selectedTeam.playersCount || 1) - 1),
+            members: updatedMembers,
           };
-          setSelectedTeam(updated);
-          setTeams((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+
+          setSelectedTeam(updatedTeam);
+          setTeams((prev) => prev.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)));
         },
       },
     ]);
   };
 
-  const handleCreateChallenge = () => {
-    if (!challengeTargetTeam.trim()) {
-      Alert.alert('Required', 'Please specify the opponent team');
+  // ── 5. Invitations (Manager -> Player) ─────────────────────────────────────
+  const handleSendInvitation = async () => {
+    if (!selectedTeam || !formInviteUser.trim()) {
+      Alert.alert('Required', 'Please enter player username or email');
       return;
     }
 
-    const ch: TeamChallenge = {
-      id: `ch-${Date.now()}`,
-      challengerTeam: selectedTeam ? selectedTeam.name : userName + ' XI',
-      targetTeam: challengeTargetTeam.trim(),
-      sport: challengeSport,
-      venue: challengeVenue.trim() || 'Local Ground',
-      date: challengeDate.trim(),
+    const newInvite: TeamInvitation = {
+      id: `inv-${Date.now()}`,
+      teamId: selectedTeam.id,
+      invitedUserId: formInviteUser.trim(),
+      inviteType: 'MANAGER_TO_PLAYER',
       status: 'PENDING',
+      createdAt: new Date().toISOString().split('T')[0],
+      invitedUser: {
+        id: formInviteUser.trim(),
+        displayName: formInviteUser.trim(),
+        email: `${formInviteUser.trim().toLowerCase().replace(/\s+/g, '')}@sportlk.com`,
+      },
     };
 
-    setChallenges((prev) => [ch, ...prev]);
+    try {
+      if (accessToken && !selectedTeam.id.startsWith('team-demo-')) {
+        await teamService.createInvitation(selectedTeam.id, newInvite.invitedUserId, accessToken);
+      }
+    } catch {
+      // Fallback
+    }
+
+    setInvitations((prev) => [newInvite, ...prev]);
+    setInviteModal(false);
+    setFormInviteUser('');
+    Alert.alert('Invitation Sent', `Formal invitation sent to ${newInvite.invitedUser?.displayName}.`);
+  };
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    if (!selectedTeam) return;
+
+    try {
+      if (accessToken && !selectedTeam.id.startsWith('team-demo-')) {
+        await teamService.cancelInvitation(selectedTeam.id, invitationId, accessToken);
+      }
+    } catch {
+      // Fallback
+    }
+
+    setInvitations((prev) => prev.filter((i) => i.id !== invitationId));
+    Alert.alert('Cancelled', 'Player invitation cancelled.');
+  };
+
+  // ── 6. Join Requests (Player -> Team) ──────────────────────────────────────
+  const handleSendJoinRequest = async (team: Team) => {
+    Alert.alert('Request to Join', `Send a join request to ${team.teamName}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Send Request',
+        onPress: async () => {
+          const req: TeamInvitation = {
+            id: `req-${Date.now()}`,
+            teamId: team.id,
+            invitedUserId: userName,
+            inviteType: 'PLAYER_REQUEST_TO_JOIN',
+            status: 'PENDING',
+            createdAt: new Date().toISOString().split('T')[0],
+            invitedUser: { id: userName, displayName: userName, email: userEmail },
+          };
+
+          try {
+            if (accessToken && !team.id.startsWith('team-demo-')) {
+              await teamService.createJoinRequest(team.id, userName, accessToken);
+            }
+          } catch {
+            // Fallback
+          }
+
+          setJoinRequests((prev) => [req, ...prev]);
+          Alert.alert('Request Sent', `Your request to join ${team.teamName} has been submitted to the manager.`);
+        },
+      },
+    ]);
+  };
+
+  const handleAcceptJoinRequest = async (request: TeamInvitation) => {
+    if (!selectedTeam) return;
+
+    try {
+      if (accessToken && !selectedTeam.id.startsWith('team-demo-')) {
+        await teamService.acceptJoinRequest(selectedTeam.id, request.id, accessToken);
+      }
+    } catch {
+      // Fallback
+    }
+
+    // Add player to roster
+    const newMember: TeamMember = {
+      id: `m-req-${Date.now()}`,
+      teamId: selectedTeam.id,
+      userId: request.invitedUserId,
+      memberRole: 'SQUAD_PLAYER',
+      jerseyNumber: (selectedTeam.members?.length || 0) + 1,
+      joinedAt: new Date().toISOString().split('T')[0],
+      user: request.invitedUser,
+    };
+
+    const updatedTeam = {
+      ...selectedTeam,
+      playersCount: (selectedTeam.playersCount || 0) + 1,
+      members: [...(selectedTeam.members || []), newMember],
+    };
+
+    setSelectedTeam(updatedTeam);
+    setTeams((prev) => prev.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)));
+    setJoinRequests((prev) => prev.filter((r) => r.id !== request.id));
+    Alert.alert('Request Accepted', `${request.invitedUser?.displayName} is now a roster squad player!`);
+  };
+
+  const handleRejectJoinRequest = async (requestId: string) => {
+    if (!selectedTeam) return;
+
+    try {
+      if (accessToken && !selectedTeam.id.startsWith('team-demo-')) {
+        await teamService.rejectJoinRequest(selectedTeam.id, requestId, accessToken);
+      }
+    } catch {
+      // Fallback
+    }
+
+    setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
+    Alert.alert('Declined', 'Join request was declined.');
+  };
+
+  // ── 7. Team Challenges ─────────────────────────────────────────────────────
+  const handleCreateChallenge = async () => {
+    if (!selectedTeam) return;
+    const targetTeam = teams.find((t) => t.id === formChallengeTargetId);
+    if (!targetTeam) {
+      Alert.alert('Required', 'Please select an opponent team to challenge');
+      return;
+    }
+
+    const newCh: TeamChallenge = {
+      id: `ch-${Date.now()}`,
+      challengerTeamId: selectedTeam.id,
+      challengedTeamId: targetTeam.id,
+      sportType: selectedTeam.sportType,
+      proposedMatchDate: formChallengeDate,
+      venueName: formChallengeVenue.trim() || 'Colombo Oval',
+      status: 'PENDING',
+      createdAt: new Date().toISOString().split('T')[0],
+      challengerTeam: selectedTeam,
+      challengedTeam: targetTeam,
+    };
+
+    try {
+      if (accessToken && !selectedTeam.id.startsWith('team-demo-')) {
+        await teamService.createChallenge(
+          selectedTeam.id,
+          {
+            challengedTeamId: targetTeam.id,
+            sportType: selectedTeam.sportType,
+            proposedMatchDate: formChallengeDate,
+            venueId: undefined,
+          },
+          accessToken,
+        );
+      }
+    } catch {
+      // Fallback
+    }
+
+    setChallenges((prev) => [newCh, ...prev]);
     setChallengeModal(false);
-    setChallengeTargetTeam('');
-    Alert.alert('Challenge Sent', `Challenge sent to ${ch.targetTeam}!`);
+    Alert.alert('Challenge Dispatched', `Match challenge issued to ${targetTeam.teamName}!`);
   };
 
-  const handleChallengeResponse = (id: string, accept: boolean) => {
+  // ── 8. Challenge Responses ─────────────────────────────────────────────────
+  const handleChallengeResponse = async (challenge: TeamChallenge, accept: boolean) => {
+    const nextStatus = accept ? 'ACCEPTED' : 'DECLINED';
+
+    try {
+      if (accessToken && !challenge.id.startsWith('ch-')) {
+        await teamService.respondToChallenge(
+          challenge.challengedTeamId,
+          challenge.id,
+          nextStatus,
+          accessToken,
+        );
+      }
+    } catch {
+      // Fallback
+    }
+
     setChallenges((prev) =>
-      prev.map((c) =>
-        c.id === id ? { ...c, status: accept ? 'ACCEPTED' : 'DECLINED' } : c
-      )
+      prev.map((c) => (c.id === challenge.id ? { ...c, status: nextStatus } : c))
     );
+
     Alert.alert(
-      accept ? 'Challenge Accepted' : 'Challenge Declined',
-      accept ? 'Match scheduled! Prepare your squad.' : 'Challenge was declined.'
+      accept ? 'Challenge Accepted ⚔️' : 'Challenge Declined',
+      accept
+        ? `Match scheduled against ${challenge.challengerTeam?.teamName || 'the challenger'}! Prepare your squad.`
+        : 'The match challenge was declined.'
     );
   };
 
-  const myTeams = teams.filter((t) => t.isMyTeam);
-  const otherTeams = teams.filter((t) => !t.isMyTeam);
+  // Filtered views
+  const myTeams = teams.filter((t) => isManagerOfTeam(t));
+  const otherTeams = teams.filter((t) => !isManagerOfTeam(t));
 
   return (
     <View style={s.container}>
-      {/* Top Header */}
+      {/* ── Top Header Bar ─────────────────────────────────────────────────── */}
       <View style={s.header}>
-        <View>
-          <Text style={s.headerKicker}>MEMBER 2 MODULE</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {Boolean(onBack) && (
+            <TouchableOpacity onPress={onBack} style={{ paddingVertical: 4, paddingRight: 6 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#6B7280' }}>✕ Close</Text>
+            </TouchableOpacity>
+          )}
           <Text style={s.headerTitle}>Teams & Squads</Text>
         </View>
         <TouchableOpacity style={s.createBtn} onPress={() => setCreateTeamModal(true)}>
@@ -351,83 +729,88 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
         </TouchableOpacity>
       </View>
 
-      {/* Sub Tabs */}
-      <View style={s.subTabRow}>
+      {/* ── Navigation Tabs ─────────────────────────────────────────────────── */}
+      <View style={s.navTabs}>
         <TouchableOpacity
-          style={[s.subTab, activeSubTab === 'my_teams' && s.subTabActive]}
-          onPress={() => setActiveSubTab('my_teams')}
+          style={[s.navTab, mainTab === 'my_teams' && s.navTabActive]}
+          onPress={() => setMainTab('my_teams')}
         >
-          <Text style={[s.subTabText, activeSubTab === 'my_teams' && s.subTabTextActive]}>
+          <Text style={[s.navTabText, mainTab === 'my_teams' && s.navTabTextActive]}>
             My Squads ({myTeams.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[s.subTab, activeSubTab === 'browse' && s.subTabActive]}
-          onPress={() => setActiveSubTab('browse')}
+          style={[s.navTab, mainTab === 'browse' && s.navTabActive]}
+          onPress={() => setMainTab('browse')}
         >
-          <Text style={[s.subTabText, activeSubTab === 'browse' && s.subTabTextActive]}>
-            Browse Teams ({otherTeams.length})
+          <Text style={[s.navTabText, mainTab === 'browse' && s.navTabTextActive]}>
+            Explore Teams ({otherTeams.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[s.subTab, activeSubTab === 'challenges' && s.subTabActive]}
-          onPress={() => setActiveSubTab('challenges')}
+          style={[s.navTab, mainTab === 'challenges' && s.navTabActive]}
+          onPress={() => setMainTab('challenges')}
         >
-          <Text style={[s.subTabText, activeSubTab === 'challenges' && s.subTabTextActive]}>
+          <Text style={[s.navTabText, mainTab === 'challenges' && s.navTabTextActive]}>
             Challenges ({challenges.length})
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Main Content */}
+      {/* ── Main Tab Content ────────────────────────────────────────────────── */}
       <ScrollView
         style={s.content}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {activeSubTab === 'my_teams' && (
+        {/* TAB 1: MY TEAMS */}
+        {mainTab === 'my_teams' && (
           <View style={s.section}>
             {myTeams.length === 0 ? (
               <View style={s.emptyBox}>
-                <Text style={s.emptyTitle}>No teams created yet</Text>
-                <Text style={s.emptySub}>Create your team to manage roster and challenge opponents.</Text>
-                <TouchableOpacity style={s.emptyBtn} onPress={() => setCreateTeamModal(true)}>
-                  <Text style={s.emptyBtnText}>Create Your First Team</Text>
+                <Text style={s.emptyTitle}>You haven't created a squad yet</Text>
+                <Text style={s.emptySub}>Build your sports team, recruit squad players, manage roster, and issue match challenges.</Text>
+                <TouchableOpacity style={s.primaryBtn} onPress={() => setCreateTeamModal(true)}>
+                  <Text style={s.primaryBtnText}>Create Your First Team</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               myTeams.map((team) => (
                 <View key={team.id} style={s.teamCard}>
                   <View style={s.teamCardHeader}>
-                    <View style={s.sportBadge}>
-                      <Text style={s.sportBadgeText}>{team.sport.toUpperCase()}</Text>
+                    <View style={s.sportTag}>
+                      <Text style={s.sportTagText}>{team.sportType}</Text>
                     </View>
-                    <View style={s.cityBadge}>
-                      <Text style={s.cityBadgeText}>📍 {team.city}</Text>
+                    <View style={s.cityTag}>
+                      <Text style={s.cityTagText}>📍 {team.primaryLocationCity || 'Colombo'}</Text>
                     </View>
                   </View>
-                  <Text style={s.teamName}>{team.name}</Text>
-                  {Boolean(team.bio) && <Text style={s.teamBio}>{team.bio}</Text>}
+                  <Text style={s.teamName}>{team.teamName}</Text>
+                  {Boolean(team.teamBio) && <Text style={s.teamBio} numberOfLines={2}>{team.teamBio}</Text>}
                   <View style={s.teamMeta}>
-                    <Text style={s.metaText}>Manager: <Text style={s.metaBold}>{team.managerName}</Text></Text>
+                    <Text style={s.metaText}>Manager: <Text style={s.metaBold}>{team.manager?.displayName || userName}</Text></Text>
                     <Text style={s.metaDot}>·</Text>
-                    <Text style={s.metaText}>{team.membersCount} Roster Players</Text>
+                    <Text style={s.metaText}>{team.members?.length || team.playersCount || 1} Roster Players</Text>
                   </View>
                   <View style={s.teamCardActions}>
                     <TouchableOpacity
-                      style={s.actionBtnOutline}
-                      onPress={() => setSelectedTeam(team)}
-                    >
-                      <Text style={s.actionBtnOutlineText}>Manage Squad Roster ({team.members.length})</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={s.actionBtnPrimary}
+                      style={s.outlineActionBtn}
                       onPress={() => {
                         setSelectedTeam(team);
+                        setTeamProfileTab('roster');
+                      }}
+                    >
+                      <Text style={s.outlineActionText}>View Full Profile & Roster →</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.primaryActionBtn}
+                      onPress={() => {
+                        setSelectedTeam(team);
+                        setFormChallengeTargetId('');
                         setChallengeModal(true);
                       }}
                     >
-                      <Text style={s.actionBtnPrimaryText}>Issue Challenge ⚔️</Text>
+                      <Text style={s.primaryActionText}>Issue Challenge ⚔️</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -436,41 +819,51 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
           </View>
         )}
 
-        {activeSubTab === 'browse' && (
+        {/* TAB 2: EXPLORE TEAMS */}
+        {mainTab === 'browse' && (
           <View style={s.section}>
+            <View style={s.searchWrap}>
+              <TextInput
+                style={s.searchInput}
+                placeholder="Search teams by name, sport, or city..."
+                value={search}
+                onChangeText={setSearch}
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
             {otherTeams.map((team) => (
               <View key={team.id} style={s.teamCard}>
                 <View style={s.teamCardHeader}>
-                  <View style={s.sportBadge}>
-                    <Text style={s.sportBadgeText}>{team.sport.toUpperCase()}</Text>
+                  <View style={s.sportTag}>
+                    <Text style={s.sportTagText}>{team.sportType}</Text>
                   </View>
-                  <View style={s.cityBadge}>
-                    <Text style={s.cityBadgeText}>📍 {team.city}</Text>
+                  <View style={s.cityTag}>
+                    <Text style={s.cityTagText}>📍 {team.primaryLocationCity || 'Sri Lanka'}</Text>
                   </View>
                 </View>
-                <Text style={s.teamName}>{team.name}</Text>
-                {Boolean(team.bio) && <Text style={s.teamBio}>{team.bio}</Text>}
+                <Text style={s.teamName}>{team.teamName}</Text>
+                {Boolean(team.teamBio) && <Text style={s.teamBio} numberOfLines={2}>{team.teamBio}</Text>}
                 <View style={s.teamMeta}>
-                  <Text style={s.metaText}>Manager: <Text style={s.metaBold}>{team.managerName}</Text></Text>
+                  <Text style={s.metaText}>Manager: <Text style={s.metaBold}>{team.manager?.displayName || 'Sports Club'}</Text></Text>
                   <Text style={s.metaDot}>·</Text>
-                  <Text style={s.metaText}>{team.membersCount} Active Players</Text>
+                  <Text style={s.metaText}>{team.playersCount || team.members?.length || 1} Players</Text>
                 </View>
                 <View style={s.teamCardActions}>
                   <TouchableOpacity
-                    style={s.actionBtnOutline}
-                    onPress={() => setSelectedTeam(team)}
-                  >
-                    <Text style={s.actionBtnOutlineText}>View Squad Roster</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={s.actionBtnPrimary}
+                    style={s.outlineActionBtn}
                     onPress={() => {
-                      setChallengeTargetTeam(team.name);
-                      setChallengeSport(team.sport);
-                      setChallengeModal(true);
+                      setSelectedTeam(team);
+                      setTeamProfileTab('roster');
                     }}
                   >
-                    <Text style={s.actionBtnPrimaryText}>Challenge Team</Text>
+                    <Text style={s.outlineActionText}>View Team Profile</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={s.primaryActionBtn}
+                    onPress={() => handleSendJoinRequest(team)}
+                  >
+                    <Text style={s.primaryActionText}>Request to Join ＋</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -478,90 +871,411 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
           </View>
         )}
 
-        {activeSubTab === 'challenges' && (
+        {/* TAB 3: CHALLENGES */}
+        {mainTab === 'challenges' && (
           <View style={s.section}>
-            <View style={s.banner}>
-              <Text style={s.bannerTitle}>Grassroots Team Challenges</Text>
-              <Text style={s.bannerSub}>Challenge rival squads, confirm venue, and settle scores on the pitch.</Text>
+            <View style={s.infoBanner}>
+              <Text style={s.infoBannerTitle}>Grassroots Team Challenges ⚔️</Text>
+              <Text style={s.infoBannerSub}>Challenge rival squads to sanctioned grassroots fixtures and track match responses.</Text>
             </View>
 
-            {challenges.map((ch) => (
-              <View key={ch.id} style={s.challengeCard}>
-                <View style={s.challengeHeader}>
-                  <Text style={s.challengeSport}>{ch.sport.toUpperCase()} MATCH</Text>
-                  <View
-                    style={[
-                      s.statusChip,
-                      ch.status === 'ACCEPTED' && s.statusChipAccepted,
-                      ch.status === 'DECLINED' && s.statusChipDeclined,
-                    ]}
-                  >
-                    <Text
+            {challenges.map((ch) => {
+              const isChallenged = myTeams.some((t) => t.id === ch.challengedTeamId);
+              const challengerName = ch.challengerTeam?.teamName || 'Challenger XI';
+              const challengedName = ch.challengedTeam?.teamName || 'Opponent XI';
+
+              return (
+                <View key={ch.id} style={s.challengeCard}>
+                  <View style={s.challengeHeader}>
+                    <Text style={s.challengeSport}>{ch.sportType} FIXTURE</Text>
+                    <View
                       style={[
-                        s.statusChipText,
-                        ch.status === 'ACCEPTED' && s.statusChipTextAccepted,
+                        s.statusChip,
+                        ch.status === 'ACCEPTED' && s.statusChipAccepted,
+                        ch.status === 'DECLINED' && s.statusChipDeclined,
                       ]}
                     >
-                      {ch.status}
-                    </Text>
+                      <Text
+                        style={[
+                          s.statusChipText,
+                          ch.status === 'ACCEPTED' && s.statusChipTextAccepted,
+                          ch.status === 'DECLINED' && s.statusChipTextDeclined,
+                        ]}
+                      >
+                        {ch.status}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-                <View style={s.matchupRow}>
-                  <Text style={s.matchupTeam}>{ch.challengerTeam}</Text>
-                  <Text style={s.matchupVs}>VS</Text>
-                  <Text style={s.matchupTeam}>{ch.targetTeam}</Text>
-                </View>
-                <View style={s.matchupDetails}>
-                  <Text style={s.detailItem}>🏟️ {ch.venue}</Text>
-                  <Text style={s.detailItem}>📅 {ch.date}</Text>
-                </View>
 
-                {ch.status === 'PENDING' && (
-                  <View style={s.challengeActions}>
-                    <TouchableOpacity
-                      style={s.acceptBtn}
-                      onPress={() => handleChallengeResponse(ch.id, true)}
-                    >
-                      <Text style={s.acceptBtnText}>Accept Challenge</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={s.declineBtn}
-                      onPress={() => handleChallengeResponse(ch.id, false)}
-                    >
-                      <Text style={s.declineBtnText}>Decline</Text>
-                    </TouchableOpacity>
+                  <View style={s.matchupRow}>
+                    <Text style={s.matchupTeam} numberOfLines={1}>{challengerName}</Text>
+                    <Text style={s.matchupVs}>VS</Text>
+                    <Text style={s.matchupTeam} numberOfLines={1}>{challengedName}</Text>
                   </View>
-                )}
-              </View>
-            ))}
+
+                  <View style={s.matchupMeta}>
+                    <Text style={s.matchupMetaText}>🏟️ {ch.venueName || 'Local Ground'}</Text>
+                    <Text style={s.matchupMetaText}>📅 {new Date(ch.proposedMatchDate).toDateString()}</Text>
+                  </View>
+
+                  {/* Accept / Decline actions if challenge is pending for my team */}
+                  {ch.status === 'PENDING' && isChallenged && (
+                    <View style={s.challengeActionsRow}>
+                      <TouchableOpacity
+                        style={s.acceptBtn}
+                        onPress={() => handleChallengeResponse(ch, true)}
+                      >
+                        <Text style={s.acceptBtnText}>Accept Challenge</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={s.declineBtn}
+                        onPress={() => handleChallengeResponse(ch, false)}
+                      >
+                        <Text style={s.declineBtnText}>Decline</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
       </ScrollView>
 
-      {/* Modal: Create Team */}
+      {/* ── MODAL: 2. Full Team Profile Screen ─────────────────────────────── */}
+      <Modal visible={Boolean(selectedTeam && !createTeamModal && !editTeamModal && !addMemberModal && !editMemberModal && !inviteModal && !challengeModal)} animationType="slide">
+        {selectedTeam && (
+          <View style={s.fullModalContainer}>
+            {/* Header */}
+            <View style={s.profileHeaderBar}>
+              <TouchableOpacity onPress={() => setSelectedTeam(null)} style={s.backBtn}>
+                <Text style={s.backBtnText}>← Back</Text>
+              </TouchableOpacity>
+              <Text style={s.profileHeaderBarTitle}>Team Profile</Text>
+              {isManagerOfTeam(selectedTeam) ? (
+                <TouchableOpacity
+                  onPress={() => {
+                    setFormTeamName(selectedTeam.teamName);
+                    setFormCity(selectedTeam.primaryLocationCity || 'Colombo');
+                    setFormBio(selectedTeam.teamBio || '');
+                    setEditTeamModal(true);
+                  }}
+                  style={s.editBtn}
+                >
+                  <Text style={s.editBtnText}>Edit</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={{ width: 40 }} />
+              )}
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Profile Hero */}
+              <View style={s.profileHero}>
+                <View style={s.profileBadge}>
+                  <Text style={s.profileBadgeText}>{selectedTeam.teamName.slice(0, 2).toUpperCase()}</Text>
+                </View>
+                <Text style={s.profileTitle}>{selectedTeam.teamName}</Text>
+                <View style={s.profileMetaRow}>
+                  <View style={s.sportTag}><Text style={s.sportTagText}>{selectedTeam.sportType}</Text></View>
+                  <Text style={s.profileLocation}>📍 {selectedTeam.primaryLocationCity || 'Colombo'}</Text>
+                  <View style={s.statusTag}><Text style={s.statusTagText}>{selectedTeam.status}</Text></View>
+                </View>
+                <Text style={s.profileBio}>{selectedTeam.teamBio || 'No team bio provided.'}</Text>
+                <Text style={s.profileManager}>Manager: <Text style={{ fontWeight: '700' }}>{selectedTeam.manager?.displayName || userName}</Text></Text>
+
+                {/* Manager Quick Actions */}
+                {isManagerOfTeam(selectedTeam) ? (
+                  <View style={s.profileActionsRow}>
+                    <TouchableOpacity style={s.profileActionBtn} onPress={() => setAddMemberModal(true)}>
+                      <Text style={s.profileActionText}>＋ Add Player</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={s.profileActionBtn} onPress={() => setInviteModal(true)}>
+                      <Text style={s.profileActionText}>✉️ Invite Player</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[s.profileActionBtn, { backgroundColor: '#111827' }]}
+                      onPress={() => {
+                        setFormChallengeTargetId('');
+                        setChallengeModal(true);
+                      }}
+                    >
+                      <Text style={[s.profileActionText, { color: '#FFFFFF' }]}>⚔️ Challenge</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[s.profileActionBtn, { backgroundColor: '#059669', alignSelf: 'stretch', marginTop: 12 }]}
+                    onPress={() => handleSendJoinRequest(selectedTeam)}
+                  >
+                    <Text style={[s.profileActionText, { color: '#FFFFFF' }]}>Request to Join Squad ＋</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Sub Navigation Bar within Profile */}
+              <View style={s.profileSubTabs}>
+                <TouchableOpacity
+                  style={[s.profileSubTab, teamProfileTab === 'roster' && s.profileSubTabActive]}
+                  onPress={() => setTeamProfileTab('roster')}
+                >
+                  <Text style={[s.profileSubTabText, teamProfileTab === 'roster' && s.profileSubTabTextActive]}>
+                    Roster ({selectedTeam.members?.length || 0})
+                  </Text>
+                </TouchableOpacity>
+
+                {isManagerOfTeam(selectedTeam) && (
+                  <TouchableOpacity
+                    style={[s.profileSubTab, teamProfileTab === 'join_requests' && s.profileSubTabActive]}
+                    onPress={() => setTeamProfileTab('join_requests')}
+                  >
+                    <Text style={[s.profileSubTabText, teamProfileTab === 'join_requests' && s.profileSubTabTextActive]}>
+                      Join Requests ({joinRequests.length})
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {isManagerOfTeam(selectedTeam) && (
+                  <TouchableOpacity
+                    style={[s.profileSubTab, teamProfileTab === 'invitations' && s.profileSubTabActive]}
+                    onPress={() => setTeamProfileTab('invitations')}
+                  >
+                    <Text style={[s.profileSubTabText, teamProfileTab === 'invitations' && s.profileSubTabTextActive]}>
+                      Invitations ({invitations.length})
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  style={[s.profileSubTab, teamProfileTab === 'challenges' && s.profileSubTabActive]}
+                  onPress={() => setTeamProfileTab('challenges')}
+                >
+                  <Text style={[s.profileSubTabText, teamProfileTab === 'challenges' && s.profileSubTabTextActive]}>
+                    Matches
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* TAB CONTENT: 3. ROSTER */}
+              {teamProfileTab === 'roster' && (
+                <View style={s.profileTabContent}>
+                  {(selectedTeam.members || []).map((m) => (
+                    <View key={m.id} style={s.memberCard}>
+                      <View style={s.memberAvatar}>
+                        <Text style={s.memberAvatarText}>
+                          {(m.user?.displayName || 'P').split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={s.memberInfo}>
+                        <Text style={s.memberName}>{m.user?.displayName || 'Player'}</Text>
+                        <View style={s.memberRoleRow}>
+                          <View
+                            style={[
+                              s.roleChip,
+                              m.memberRole === 'CAPTAIN' && s.roleChipCaptain,
+                              m.memberRole === 'VICE_CAPTAIN' && s.roleChipVice,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                s.roleChipText,
+                                m.memberRole === 'CAPTAIN' && s.roleChipTextCaptain,
+                                m.memberRole === 'VICE_CAPTAIN' && s.roleChipTextVice,
+                              ]}
+                            >
+                              {m.memberRole.replace('_', ' ')}
+                            </Text>
+                          </View>
+                          {Boolean(m.jerseyNumber) && (
+                            <Text style={s.jerseyText}>#{m.jerseyNumber}</Text>
+                          )}
+                        </View>
+                      </View>
+
+                      {isManagerOfTeam(selectedTeam) && (
+                        <View style={s.memberActions}>
+                          <TouchableOpacity
+                            style={s.editMemberBtn}
+                            onPress={() => {
+                              setSelectedMember(m);
+                              setFormMemberRole(m.memberRole);
+                              setFormJersey(m.jerseyNumber ? String(m.jerseyNumber) : '');
+                              setEditMemberModal(true);
+                            }}
+                          >
+                            <Text style={s.editMemberText}>Role</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={s.removeMemberBtn}
+                            onPress={() => handleRemoveMember(m)}
+                          >
+                            <Text style={s.removeMemberText}>✕</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* TAB CONTENT: 6. JOIN REQUESTS */}
+              {teamProfileTab === 'join_requests' && (
+                <View style={s.profileTabContent}>
+                  {joinRequests.length === 0 ? (
+                    <View style={s.emptySmall}>
+                      <Text style={s.emptySmallText}>No pending player join requests</Text>
+                    </View>
+                  ) : (
+                    joinRequests.map((req) => (
+                      <View key={req.id} style={s.requestCard}>
+                        <View style={s.requestInfo}>
+                          <Text style={s.requestName}>{req.invitedUser?.displayName || 'Interested Player'}</Text>
+                          <Text style={s.requestDate}>Requested on {req.createdAt}</Text>
+                        </View>
+                        <View style={s.requestActions}>
+                          <TouchableOpacity
+                            style={s.acceptRequestBtn}
+                            onPress={() => handleAcceptJoinRequest(req)}
+                          >
+                            <Text style={s.acceptRequestText}>Accept to Squad</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={s.rejectRequestBtn}
+                            onPress={() => handleRejectJoinRequest(req.id)}
+                          >
+                            <Text style={s.rejectRequestText}>Decline</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+              )}
+
+              {/* TAB CONTENT: 5. INVITATIONS */}
+              {teamProfileTab === 'invitations' && (
+                <View style={s.profileTabContent}>
+                  <TouchableOpacity style={s.inviteBannerBtn} onPress={() => setInviteModal(true)}>
+                    <Text style={s.inviteBannerBtnText}>＋ Send New Player Invitation</Text>
+                  </TouchableOpacity>
+
+                  {invitations.length === 0 ? (
+                    <View style={s.emptySmall}>
+                      <Text style={s.emptySmallText}>No active invitations sent</Text>
+                    </View>
+                  ) : (
+                    invitations.map((inv) => (
+                      <View key={inv.id} style={s.requestCard}>
+                        <View style={s.requestInfo}>
+                          <Text style={s.requestName}>{inv.invitedUser?.displayName || inv.invitedUserId}</Text>
+                          <Text style={s.requestDate}>Status: PENDING · Sent {inv.createdAt}</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={s.cancelInviteBtn}
+                          onPress={() => handleCancelInvitation(inv.id)}
+                        >
+                          <Text style={s.cancelInviteText}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                  )}
+                </View>
+              )}
+
+              {/* TAB CONTENT: 7 & 8. MATCH CHALLENGES */}
+              {teamProfileTab === 'challenges' && (
+                <View style={s.profileTabContent}>
+                  <TouchableOpacity
+                    style={s.inviteBannerBtn}
+                    onPress={() => {
+                      setFormChallengeTargetId('');
+                      setChallengeModal(true);
+                    }}
+                  >
+                    <Text style={s.inviteBannerBtnText}>⚔️ Issue Match Challenge to Opponent</Text>
+                  </TouchableOpacity>
+
+                  {challenges
+                    .filter((c) => c.challengerTeamId === selectedTeam.id || c.challengedTeamId === selectedTeam.id)
+                    .map((ch) => (
+                      <View key={ch.id} style={s.challengeCard}>
+                        <View style={s.challengeHeader}>
+                          <Text style={s.challengeSport}>{ch.sportType}</Text>
+                          <View
+                            style={[
+                              s.statusChip,
+                              ch.status === 'ACCEPTED' && s.statusChipAccepted,
+                              ch.status === 'DECLINED' && s.statusChipDeclined,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                s.statusChipText,
+                                ch.status === 'ACCEPTED' && s.statusChipTextAccepted,
+                                ch.status === 'DECLINED' && s.statusChipTextDeclined,
+                              ]}
+                            >
+                              {ch.status}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={s.matchupRowText}>
+                          {ch.challengerTeam?.teamName} vs {ch.challengedTeam?.teamName}
+                        </Text>
+                        <Text style={s.detailItem}>🏟️ {ch.venueName}</Text>
+                        <Text style={s.detailItem}>📅 {new Date(ch.proposedMatchDate).toDateString()}</Text>
+
+                        {/* Accept / Decline actions if challenge received */}
+                        {ch.status === 'PENDING' && ch.challengedTeamId === selectedTeam.id && (
+                          <View style={s.challengeActionsRow}>
+                            <TouchableOpacity
+                              style={s.acceptBtn}
+                              onPress={() => handleChallengeResponse(ch, true)}
+                            >
+                              <Text style={s.acceptBtnText}>Accept Challenge</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={s.declineBtn}
+                              onPress={() => handleChallengeResponse(ch, false)}
+                            >
+                              <Text style={s.declineBtnText}>Decline</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    ))}
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        )}
+      </Modal>
+
+      {/* ── MODAL: 1. Create Team Form ─────────────────────────────────────── */}
       <Modal visible={createTeamModal} animationType="slide" transparent>
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
-            <Text style={s.modalTitle}>Create New Sports Team</Text>
-            <Text style={s.modalSub}>Build your squad, invite teammates, and register for tournaments.</Text>
+            <Text style={s.modalTitle}>Establish Sports Team</Text>
+            <Text style={s.modalSub}>Create your grassroots squad, register roster players, and challenge rivals.</Text>
 
             <Text style={s.inputLabel}>TEAM NAME *</Text>
             <TextInput
               style={s.input}
               placeholder="e.g. Colombo Falcons CC"
-              value={teamName}
-              onChangeText={setTeamName}
+              value={formTeamName}
+              onChangeText={setFormTeamName}
+              placeholderTextColor="#9CA3AF"
             />
 
-            <Text style={s.inputLabel}>SPORT *</Text>
+            <Text style={s.inputLabel}>SPORT TYPE *</Text>
             <View style={s.chipGroup}>
-              {['Cricket', 'Football', 'Badminton', 'Basketball'].map((sp) => (
+              {(['CRICKET', 'FOOTBALL', 'BADMINTON', 'BASKETBALL', 'VOLLEYBALL'] as SportType[]).map((sp) => (
                 <TouchableOpacity
                   key={sp}
-                  style={[s.chip, teamSport === sp && s.chipActive]}
-                  onPress={() => setTeamSport(sp)}
+                  style={[s.chip, formSportType === sp && s.chipActive]}
+                  onPress={() => setFormSportType(sp)}
                 >
-                  <Text style={[s.chipText, teamSport === sp && s.chipTextActive]}>{sp}</Text>
+                  <Text style={[s.chipText, formSportType === sp && s.chipTextActive]}>{sp}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -570,18 +1284,20 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
             <TextInput
               style={s.input}
               placeholder="e.g. Colombo"
-              value={teamCity}
-              onChangeText={setTeamCity}
+              value={formCity}
+              onChangeText={setFormCity}
+              placeholderTextColor="#9CA3AF"
             />
 
-            <Text style={s.inputLabel}>TEAM DESCRIPTION / BIO</Text>
+            <Text style={s.inputLabel}>TEAM BIO / DESCRIPTION</Text>
             <TextInput
               style={[s.input, s.inputMulti]}
-              placeholder="Tell others about your squad, training times, and level..."
+              placeholder="Share details about training sessions, home ground, and team goals..."
               multiline
               numberOfLines={3}
-              value={teamBio}
-              onChangeText={setTeamBio}
+              value={formBio}
+              onChangeText={setFormBio}
+              placeholderTextColor="#9CA3AF"
             />
 
             <View style={s.modalActions}>
@@ -596,89 +1312,73 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
         </View>
       </Modal>
 
-      {/* Modal: View & Manage Squad Roster */}
-      <Modal visible={Boolean(selectedTeam && !challengeModal)} animationType="slide" transparent>
+      {/* ── MODAL: 1b. Edit Team Profile ───────────────────────────────────── */}
+      <Modal visible={editTeamModal} animationType="slide" transparent>
         <View style={s.modalOverlay}>
-          <View style={[s.modalBox, { maxHeight: '85%' }]}>
-            <View style={s.modalHeaderRow}>
-              <View>
-                <Text style={s.modalTitle}>{selectedTeam?.name}</Text>
-                <Text style={s.modalSub}>
-                  {selectedTeam?.sport} · {selectedTeam?.city} · {selectedTeam?.members.length} Players
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => setSelectedTeam(null)}>
-                <Text style={s.closeText}>✕</Text>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>Edit Team Profile</Text>
+
+            <Text style={s.inputLabel}>TEAM NAME</Text>
+            <TextInput
+              style={s.input}
+              value={formTeamName}
+              onChangeText={setFormTeamName}
+            />
+
+            <Text style={s.inputLabel}>HOME CITY</Text>
+            <TextInput
+              style={s.input}
+              value={formCity}
+              onChangeText={setFormCity}
+            />
+
+            <Text style={s.inputLabel}>BIO / DESCRIPTION</Text>
+            <TextInput
+              style={[s.input, s.inputMulti]}
+              multiline
+              value={formBio}
+              onChangeText={setFormBio}
+            />
+
+            <View style={s.modalActions}>
+              <TouchableOpacity style={s.modalCancel} onPress={() => setEditTeamModal(false)}>
+                <Text style={s.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.modalSubmit} onPress={handleUpdateTeamProfile}>
+                <Text style={s.modalSubmitText}>Save Changes</Text>
               </TouchableOpacity>
             </View>
-
-            <View style={s.rosterActions}>
-              <Text style={s.sectionHeader}>Squad Roster</Text>
-              {selectedTeam?.isMyTeam && (
-                <TouchableOpacity
-                  style={s.addPlayerBtn}
-                  onPress={() => setAddMemberModal(true)}
-                >
-                  <Text style={s.addPlayerBtnText}>＋ Add Player</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-              {selectedTeam?.members.map((m) => (
-                <View key={m.id} style={s.memberRow}>
-                  <View style={s.memberAvatar}>
-                    <Text style={s.memberAvatarText}>
-                      {m.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={s.memberInfo}>
-                    <Text style={s.memberName}>{m.name}</Text>
-                    <Text style={s.memberRole}>
-                      {m.role} {m.jerseyNumber ? `· #${m.jerseyNumber}` : ''}
-                    </Text>
-                  </View>
-                  {selectedTeam?.isMyTeam && (
-                    <TouchableOpacity
-                      style={s.removeMemberBtn}
-                      onPress={() => handleRemoveMember(m.id)}
-                    >
-                      <Text style={s.removeMemberText}>Remove</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity style={s.closeBtn} onPress={() => setSelectedTeam(null)}>
-              <Text style={s.closeBtnText}>Done</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Modal: Add Member */}
-      <Modal visible={addMemberModal} animationType="fade" transparent>
+      {/* ── MODAL: 4. Add Player to Roster ──────────────────────────────────── */}
+      <Modal visible={addMemberModal} animationType="slide" transparent>
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
             <Text style={s.modalTitle}>Add Player to Squad</Text>
-            <Text style={s.inputLabel}>PLAYER NAME *</Text>
+            <Text style={s.modalSub}>Add an athlete directly to the team's active roster.</Text>
+
+            <Text style={s.inputLabel}>PLAYER NAME / USERNAME *</Text>
             <TextInput
               style={s.input}
-              placeholder="e.g. Mahela Jayawardena"
-              value={newMemberName}
-              onChangeText={setNewMemberName}
+              placeholder="e.g. Sanath Jayasuriya"
+              value={formMemberName}
+              onChangeText={setFormMemberName}
+              placeholderTextColor="#9CA3AF"
             />
 
             <Text style={s.inputLabel}>SQUAD ROLE</Text>
             <View style={s.chipGroup}>
-              {(['Captain', 'Vice-Captain', 'Player', 'Coach'] as const).map((r) => (
+              {(['CAPTAIN', 'VICE_CAPTAIN', 'SQUAD_PLAYER'] as TeamMemberRole[]).map((r) => (
                 <TouchableOpacity
                   key={r}
-                  style={[s.chip, newMemberRole === r && s.chipActive]}
-                  onPress={() => setNewMemberRole(r)}
+                  style={[s.chip, formMemberRole === r && s.chipActive]}
+                  onPress={() => setFormMemberRole(r)}
                 >
-                  <Text style={[s.chipText, newMemberRole === r && s.chipTextActive]}>{r}</Text>
+                  <Text style={[s.chipText, formMemberRole === r && s.chipTextActive]}>
+                    {r.replace('_', ' ')}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -686,10 +1386,11 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
             <Text style={s.inputLabel}>JERSEY NUMBER</Text>
             <TextInput
               style={s.input}
-              placeholder="e.g. 10"
+              placeholder="e.g. 7"
               keyboardType="number-pad"
-              value={newMemberJersey}
-              onChangeText={setNewMemberJersey}
+              value={formJersey}
+              onChangeText={setFormJersey}
+              placeholderTextColor="#9CA3AF"
             />
 
             <View style={s.modalActions}>
@@ -704,48 +1405,115 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
         </View>
       </Modal>
 
-      {/* Modal: Issue Challenge */}
-      <Modal visible={challengeModal} animationType="slide" transparent>
+      {/* ── MODAL: 4b. Update Role & Jersey ─────────────────────────────────── */}
+      <Modal visible={editMemberModal} animationType="fade" transparent>
         <View style={s.modalOverlay}>
           <View style={s.modalBox}>
-            <Text style={s.modalTitle}>Issue Match Challenge</Text>
-            <Text style={s.modalSub}>Schedule a friendly match or league fixture against an opponent squad.</Text>
+            <Text style={s.modalTitle}>Update Roster Role</Text>
+            <Text style={s.modalSub}>Adjust member role and jersey number for {selectedMember?.user?.displayName}.</Text>
 
-            <Text style={s.inputLabel}>OPPONENT TEAM *</Text>
-            <TextInput
-              style={s.input}
-              placeholder="e.g. Kandy Thunder Futsal"
-              value={challengeTargetTeam}
-              onChangeText={setChallengeTargetTeam}
-            />
-
-            <Text style={s.inputLabel}>SPORT</Text>
+            <Text style={s.inputLabel}>SQUAD ROLE</Text>
             <View style={s.chipGroup}>
-              {['Cricket', 'Football', 'Badminton'].map((sp) => (
+              {(['CAPTAIN', 'VICE_CAPTAIN', 'SQUAD_PLAYER'] as TeamMemberRole[]).map((r) => (
                 <TouchableOpacity
-                  key={sp}
-                  style={[s.chip, challengeSport === sp && s.chipActive]}
-                  onPress={() => setChallengeSport(sp)}
+                  key={r}
+                  style={[s.chip, formMemberRole === r && s.chipActive]}
+                  onPress={() => setFormMemberRole(r)}
                 >
-                  <Text style={[s.chipText, challengeSport === sp && s.chipTextActive]}>{sp}</Text>
+                  <Text style={[s.chipText, formMemberRole === r && s.chipTextActive]}>
+                    {r.replace('_', ' ')}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={s.inputLabel}>VENUE / GROUND</Text>
+            <Text style={s.inputLabel}>JERSEY NUMBER</Text>
             <TextInput
               style={s.input}
-              placeholder="e.g. CR&FC Grounds, Colombo"
-              value={challengeVenue}
-              onChangeText={setChallengeVenue}
+              placeholder="e.g. 10"
+              keyboardType="number-pad"
+              value={formJersey}
+              onChangeText={setFormJersey}
+            />
+
+            <View style={s.modalActions}>
+              <TouchableOpacity style={s.modalCancel} onPress={() => setEditMemberModal(false)}>
+                <Text style={s.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.modalSubmit} onPress={handleUpdateMemberRole}>
+                <Text style={s.modalSubmitText}>Update</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL: 5. Invite Player ─────────────────────────────────────────── */}
+      <Modal visible={inviteModal} animationType="slide" transparent>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>Invite Player to Team</Text>
+            <Text style={s.modalSub}>Send a squad invitation to an athlete on SportLK.</Text>
+
+            <Text style={s.inputLabel}>PLAYER USERNAME OR EMAIL *</Text>
+            <TextInput
+              style={s.input}
+              placeholder="e.g. mahela@sportlk.com"
+              value={formInviteUser}
+              onChangeText={setFormInviteUser}
+              placeholderTextColor="#9CA3AF"
+            />
+
+            <View style={s.modalActions}>
+              <TouchableOpacity style={s.modalCancel} onPress={() => setInviteModal(false)}>
+                <Text style={s.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.modalSubmit} onPress={handleSendInvitation}>
+                <Text style={s.modalSubmitText}>Send Invitation</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── MODAL: 7. Issue Challenge ──────────────────────────────────────── */}
+      <Modal visible={challengeModal} animationType="slide" transparent>
+        <View style={s.modalOverlay}>
+          <View style={s.modalBox}>
+            <Text style={s.modalTitle}>Issue Match Challenge</Text>
+            <Text style={s.modalSub}>Set date, venue, and challenge an opponent club to a fixture.</Text>
+
+            <Text style={s.inputLabel}>OPPONENT TEAM *</Text>
+            <ScrollView style={{ maxHeight: 120, marginBottom: 10 }} showsVerticalScrollIndicator={false}>
+              {teams
+                .filter((t) => t.id !== selectedTeam?.id)
+                .map((t) => (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={[s.opponentItem, formChallengeTargetId === t.id && s.opponentItemActive]}
+                    onPress={() => setFormChallengeTargetId(t.id)}
+                  >
+                    <Text style={[s.opponentItemText, formChallengeTargetId === t.id && s.opponentItemTextActive]}>
+                      {t.teamName} ({t.sportType})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+            </ScrollView>
+
+            <Text style={s.inputLabel}>MATCH VENUE / GROUND</Text>
+            <TextInput
+              style={s.input}
+              placeholder="e.g. Colombo Oval"
+              value={formChallengeVenue}
+              onChangeText={setFormChallengeVenue}
             />
 
             <Text style={s.inputLabel}>PROPOSED DATE & TIME</Text>
             <TextInput
               style={s.input}
-              placeholder="e.g. Next Saturday, 4:00 PM"
-              value={challengeDate}
-              onChangeText={setChallengeDate}
+              placeholder="e.g. 2026-11-25T15:00:00Z"
+              value={formChallengeDate}
+              onChangeText={setFormChallengeDate}
             />
 
             <View style={s.modalActions}>
@@ -753,7 +1521,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
                 <Text style={s.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.modalSubmit} onPress={handleCreateChallenge}>
-                <Text style={s.modalSubmitText}>Send Challenge</Text>
+                <Text style={s.modalSubmitText}>Dispatch Challenge</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -764,10 +1532,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
 }
 
 const s = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
+  container: { flex: 1, backgroundColor: '#F9FAFB' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -778,497 +1543,152 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  headerKicker: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    color: '#059669',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  createBtn: {
-    backgroundColor: '#111827',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  createBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  subTabRow: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    paddingHorizontal: 12,
-  },
-  subTab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  subTabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#059669',
-  },
-  subTabText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  subTabTextActive: {
-    color: '#059669',
-    fontWeight: '700',
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  section: {
-    paddingBottom: 30,
-  },
-  emptyBox: {
-    backgroundColor: '#FFFFFF',
-    padding: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    marginTop: 20,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  emptySub: {
-    fontSize: 13,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-  emptyBtn: {
-    backgroundColor: '#059669',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  emptyBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  teamCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  teamCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  sportBadge: {
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  sportBadgeText: {
-    color: '#059669',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  cityBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  cityBadgeText: {
-    color: '#6B7280',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  teamName: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  teamBio: {
-    fontSize: 13,
-    color: '#4B5563',
-    lineHeight: 18,
-    marginBottom: 10,
-  },
-  teamMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  metaText: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  metaBold: {
-    fontWeight: '600',
-    color: '#374151',
-  },
-  metaDot: {
-    marginHorizontal: 8,
-    color: '#9CA3AF',
-  },
-  teamCardActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionBtnOutline: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    paddingVertical: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  actionBtnOutlineText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  actionBtnPrimary: {
-    backgroundColor: '#059669',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  actionBtnPrimaryText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  banner: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
-  },
-  bannerTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#92400E',
-    marginBottom: 2,
-  },
-  bannerSub: {
-    fontSize: 12,
-    color: '#78350F',
-    lineHeight: 16,
-  },
-  challengeCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  challengeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  challengeSport: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#059669',
-    letterSpacing: 0.5,
-  },
-  statusChip: {
-    backgroundColor: '#FEF3C7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  statusChipAccepted: {
-    backgroundColor: '#D1FAE5',
-  },
-  statusChipDeclined: {
-    backgroundColor: '#FEE2E2',
-  },
-  statusChipText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#B45309',
-  },
-  statusChipTextAccepted: {
-    color: '#065F46',
-  },
-  matchupRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: '#F3F4F6',
-    marginBottom: 10,
-  },
-  matchupTeam: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-  },
-  matchupVs: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#9CA3AF',
-    paddingHorizontal: 8,
-  },
-  matchupDetails: {
-    gap: 4,
-    marginBottom: 12,
-  },
-  detailItem: {
-    fontSize: 12,
-    color: '#4B5563',
-  },
-  challengeActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  acceptBtn: {
-    flex: 1,
-    backgroundColor: '#059669',
-    paddingVertical: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  acceptBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  declineBtn: {
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  declineBtnText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  // Modals
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalBox: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  modalHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 14,
-  },
-  closeText: {
-    fontSize: 18,
-    color: '#9CA3AF',
-    fontWeight: '700',
-    padding: 4,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  modalSub: {
-    fontSize: 12,
-    color: '#6B7280',
-    lineHeight: 16,
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#4B5563',
-    marginBottom: 6,
-    marginTop: 8,
-    letterSpacing: 0.5,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 14,
-    color: '#111827',
-    backgroundColor: '#F9FAFB',
-  },
-  inputMulti: {
-    height: 70,
-    textAlignVertical: 'top',
-  },
-  chipGroup: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 4,
-  },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-  },
-  chipActive: {
-    backgroundColor: '#059669',
-  },
-  chipText: {
-    fontSize: 12,
-    color: '#4B5563',
-    fontWeight: '600',
-  },
-  chipTextActive: {
-    color: '#FFFFFF',
-  },
-  modalActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 10,
-    marginTop: 20,
-  },
-  modalCancel: {
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: 6,
-  },
-  modalCancelText: {
-    color: '#6B7280',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  modalSubmit: {
-    backgroundColor: '#059669',
-    paddingVertical: 9,
-    paddingHorizontal: 18,
-    borderRadius: 6,
-  },
-  modalSubmitText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  rosterActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  sectionHeader: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  addPlayerBtn: {
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-  },
-  addPlayerBtnText: {
-    color: '#059669',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  memberRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  memberAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E5E7EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 10,
-  },
-  memberAvatarText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#374151',
-  },
-  memberInfo: {
-    flex: 1,
-  },
-  memberName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  memberRole: {
-    fontSize: 11,
-    color: '#6B7280',
-  },
-  removeMemberBtn: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  removeMemberText: {
-    fontSize: 11,
-    color: '#EF4444',
-    fontWeight: '600',
-  },
-  closeBtn: {
-    backgroundColor: '#111827',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 14,
-  },
-  closeBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-});
+  headerKicker: { fontSize: 9, fontWeight: '800', letterSpacing: 0.8, color: '#059669' },
+  headerTitle: { fontSize: 19, fontWeight: '800', color: '#111827' },
+  createBtn: { backgroundColor: '#111827', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  createBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  navTabs: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingHorizontal: 12 },
+  navTab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  navTabActive: { borderBottomWidth: 2, borderBottomColor: '#059669' },
+  navTabText: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
+  navTabTextActive: { color: '#059669', fontWeight: '800' },
+  content: { flex: 1, padding: 16 },
+  section: { paddingBottom: 40 },
+  searchWrap: { marginBottom: 12 },
+  searchInput: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 13, color: '#111827' },
+  emptyBox: { backgroundColor: '#FFFFFF', padding: 24, borderRadius: 14, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', marginTop: 14 },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  emptySub: { fontSize: 12, color: '#6B7280', textAlign: 'center', lineHeight: 17, marginBottom: 16 },
+  primaryBtn: { backgroundColor: '#059669', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
+  primaryBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  teamCard: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: '#E5E7EB', elevation: 1 },
+  teamCardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  sportTag: { backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
+  sportTagText: { color: '#059669', fontSize: 10, fontWeight: '800' },
+  cityTag: { paddingHorizontal: 4, paddingVertical: 3 },
+  cityTagText: { color: '#6B7280', fontSize: 11, fontWeight: '500' },
+  teamName: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 4 },
+  teamBio: { fontSize: 12, color: '#4B5563', lineHeight: 17, marginBottom: 10 },
+  teamMeta: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  metaText: { fontSize: 11, color: '#6B7280' },
+  metaBold: { fontWeight: '700', color: '#374151' },
+  metaDot: { marginHorizontal: 6, color: '#9CA3AF' },
+  teamCardActions: { flexDirection: 'row', gap: 8 },
+  outlineActionBtn: { flex: 1.4, borderWidth: 1, borderColor: '#D1D5DB', paddingVertical: 8, borderRadius: 6, alignItems: 'center' },
+  outlineActionText: { fontSize: 11, fontWeight: '600', color: '#374151' },
+  primaryActionBtn: { flex: 1, backgroundColor: '#059669', paddingVertical: 8, borderRadius: 6, alignItems: 'center' },
+  primaryActionText: { fontSize: 11, fontWeight: '700', color: '#FFFFFF' },
 
+  // Challenges View
+  infoBanner: { backgroundColor: '#FEF3C7', borderRadius: 10, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: '#FDE68A' },
+  infoBannerTitle: { fontSize: 13, fontWeight: '700', color: '#92400E', marginBottom: 2 },
+  infoBannerSub: { fontSize: 11, color: '#78350F', lineHeight: 15 },
+  challengeCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' },
+  challengeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  challengeSport: { fontSize: 10, fontWeight: '800', color: '#059669', letterSpacing: 0.5 },
+  statusChip: { backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  statusChipAccepted: { backgroundColor: '#D1FAE5' },
+  statusChipDeclined: { backgroundColor: '#FEE2E2' },
+  statusChipText: { fontSize: 9, fontWeight: '800', color: '#B45309' },
+  statusChipTextAccepted: { color: '#065F46' },
+  statusChipTextDeclined: { color: '#991B1B' },
+  matchupRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#F3F4F6', marginBottom: 8 },
+  matchupTeam: { flex: 1, fontSize: 13, fontWeight: '700', color: '#111827', textAlign: 'center' },
+  matchupVs: { fontSize: 11, fontWeight: '800', color: '#9CA3AF', paddingHorizontal: 6 },
+  matchupRowText: { fontSize: 13, fontWeight: '700', color: '#111827', marginBottom: 6 },
+  matchupMeta: { gap: 3, marginBottom: 8 },
+  detailItem: { fontSize: 11, color: '#4B5563' },
+  challengeActionsRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  acceptBtn: { flex: 1, backgroundColor: '#059669', paddingVertical: 7, borderRadius: 6, alignItems: 'center' },
+  acceptBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  declineBtn: { borderWidth: 1, borderColor: '#DC2626', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 6, alignItems: 'center' },
+  declineBtnText: { color: '#DC2626', fontSize: 11, fontWeight: '600' },
+
+  // Full Screen Team Profile View
+  fullModalContainer: { flex: 1, backgroundColor: '#FFFFFF' },
+  profileHeaderBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  backBtn: { padding: 4 },
+  backBtnText: { fontSize: 13, fontWeight: '700', color: '#059669' },
+  profileHeaderBarTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  editBtn: { padding: 4 },
+  editBtnText: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  profileHero: { padding: 16, backgroundColor: '#F9FAFB', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', alignItems: 'center' },
+  profileBadge: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#111827', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  profileBadgeText: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
+  profileTitle: { fontSize: 19, fontWeight: '800', color: '#111827', marginBottom: 4, textAlign: 'center' },
+  profileMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  profileLocation: { fontSize: 12, color: '#6B7280' },
+  statusTag: { backgroundColor: '#E0E7FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  statusTagText: { fontSize: 9, fontWeight: '700', color: '#3730A3' },
+  profileBio: { fontSize: 12, color: '#4B5563', textAlign: 'center', lineHeight: 17, marginBottom: 8, paddingHorizontal: 10 },
+  profileManager: { fontSize: 11, color: '#6B7280' },
+  profileActionsRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  profileActionBtn: { backgroundColor: '#059669', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
+  profileActionText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  profileSubTabs: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingHorizontal: 8 },
+  profileSubTab: { flex: 1, paddingVertical: 10, alignItems: 'center' },
+  profileSubTabActive: { borderBottomWidth: 2, borderBottomColor: '#059669' },
+  profileSubTabText: { fontSize: 11, fontWeight: '600', color: '#6B7280' },
+  profileSubTabTextActive: { color: '#059669', fontWeight: '800' },
+  profileTabContent: { padding: 16 },
+
+  // Roster View
+  memberCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  memberAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  memberAvatarText: { fontSize: 11, fontWeight: '800', color: '#374151' },
+  memberInfo: { flex: 1 },
+  memberName: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  memberRoleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
+  roleChip: { backgroundColor: '#F3F4F6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  roleChipCaptain: { backgroundColor: '#FEF3C7' },
+  roleChipVice: { backgroundColor: '#D1FAE5' },
+  roleChipText: { fontSize: 9, fontWeight: '700', color: '#6B7280' },
+  roleChipTextCaptain: { color: '#B45309' },
+  roleChipTextVice: { color: '#065F46' },
+  jerseyText: { fontSize: 10, fontWeight: '700', color: '#374151' },
+  memberActions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  editMemberBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: '#F3F4F6' },
+  editMemberText: { fontSize: 10, fontWeight: '600', color: '#4B5563' },
+  removeMemberBtn: { paddingHorizontal: 6, paddingVertical: 4 },
+  removeMemberText: { fontSize: 12, color: '#DC2626', fontWeight: '800' },
+
+  // Join Requests & Invitations
+  emptySmall: { padding: 20, alignItems: 'center' },
+  emptySmallText: { fontSize: 12, color: '#9CA3AF' },
+  requestCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#F9FAFB', borderRadius: 10, marginBottom: 10, borderWidth: 1, borderColor: '#E5E7EB' },
+  requestInfo: { flex: 1 },
+  requestName: { fontSize: 13, fontWeight: '700', color: '#111827' },
+  requestDate: { fontSize: 10, color: '#6B7280', marginTop: 2 },
+  requestActions: { flexDirection: 'row', gap: 6 },
+  acceptRequestBtn: { backgroundColor: '#059669', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+  acceptRequestText: { color: '#FFFFFF', fontSize: 10, fontWeight: '700' },
+  rejectRequestBtn: { borderWidth: 1, borderColor: '#DC2626', paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6 },
+  rejectRequestText: { color: '#DC2626', fontSize: 10, fontWeight: '600' },
+  inviteBannerBtn: { backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0', paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginBottom: 12 },
+  inviteBannerBtnText: { color: '#065F46', fontSize: 12, fontWeight: '700' },
+  cancelInviteBtn: { borderWidth: 1, borderColor: '#D1D5DB', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6 },
+  cancelInviteText: { color: '#6B7280', fontSize: 10, fontWeight: '600' },
+
+  // Forms & Dialog Modals
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 18 },
+  modalBox: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: '#111827', marginBottom: 4 },
+  modalSub: { fontSize: 11, color: '#6B7280', lineHeight: 15, marginBottom: 12 },
+  inputLabel: { fontSize: 10, fontWeight: '800', color: '#4B5563', marginBottom: 5, marginTop: 8, letterSpacing: 0.5 },
+  input: { borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 13, color: '#111827', backgroundColor: '#F9FAFB' },
+  inputMulti: { height: 60, textAlignVertical: 'top' },
+  chipGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
+  chip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, backgroundColor: '#F3F4F6' },
+  chipActive: { backgroundColor: '#059669' },
+  chipText: { fontSize: 11, color: '#4B5563', fontWeight: '600' },
+  chipTextActive: { color: '#FFFFFF' },
+  opponentItem: { padding: 9, borderRadius: 6, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 6 },
+  opponentItemActive: { borderColor: '#059669', backgroundColor: '#ECFDF5' },
+  opponentItemText: { fontSize: 12, color: '#374151', fontWeight: '600' },
+  opponentItemTextActive: { color: '#059669', fontWeight: '700' },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 16 },
+  modalCancel: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 6 },
+  modalCancelText: { color: '#6B7280', fontWeight: '600', fontSize: 12 },
+  modalSubmit: { backgroundColor: '#059669', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6 },
+  modalSubmitText: { color: '#FFFFFF', fontWeight: '700', fontSize: 12 },
+});
