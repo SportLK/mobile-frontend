@@ -403,3 +403,11 @@
 {"_e":"metro:bundling:progress","_t":1792245850932,"id":"4","progress":0,"total":1,"current":0}
 {"_e":"metro:bundling:done","_t":1792245850953,"id":"4","total":1,"ms":20.8074}
 {"_e":"metro:client_log","_t":1792245854744,"level":"warn","data":["SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/AppAndFlow/react-native-safe-area-context"]}
+{"_e":"root:init","_t":1794044860426,"format":"v0-jsonl","version":"57.0.27"}
+{"_e":"env:mode","_t":1794044860428,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1794044860432,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1794044861679,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1794044863301,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"expo:dev-tools-plugin:load","_t":1794044866667,"plugins":[]}
+{"_e":"metro:instantiate","_t":1794044880904,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"metro:client_log","_t":1794044909919,"level":"error","data":["Project is incompatible with this version of Expo Go\n\n• The installed version of Expo Go is for SDK 58.\n• The project you opened uses SDK 57.\n\nHow to fix this error:\nEither upgrade this project to SDK 58 or install an older version of Expo Go that is compatible with your project.\n\n<a href='https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/'>Learn how to upgrade to SDK 58.</a>\n\n<a href='https://expo.dev/go?sdkVersion=57&platform=android&device=true'>Learn how to install Expo Go for SDK 57</a>."]}
