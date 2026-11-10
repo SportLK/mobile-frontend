@@ -44,93 +44,20 @@ export const VenuesScreen: React.FC<VenuesScreenProps> = ({ onSelectVenue }) => 
   const fetchVenues = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await venueService.getNearbyVenues({
+      let data = await venueService.getNearbyVenues({
         latitude: DEFAULT_LAT,
         longitude: DEFAULT_LNG,
         radiusInKm: selectedRadius,
         sportType: selectedSport,
-      });
-      setVenues(data);
+      }).catch(() => []);
+
+      if (!data || data.length === 0) {
+        data = await venueService.getAllVenues(selectedSport).catch(() => []);
+      }
+      setVenues(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.warn('Failed to fetch venues, loading fallback list:', error);
-      // Fallback sample data matching Figma design if backend is temporarily disconnected
-      setVenues([
-        {
-          id: '1',
-          venueName: 'CR & FC Futsal Grounds',
-          addressLine: 'Maitland Crescent',
-          city: 'Colombo 07',
-          district: 'Colombo',
-          province: 'Western',
-          contactPhone: '0112695349',
-          hourlyBaseRate: 3500,
-          isActive: true,
-          latitude: 6.9085,
-          longitude: 79.8665,
-          distanceKm: 2.4,
-          facilities: [
-            {
-              id: '1',
-              venueId: '1',
-              sportType: 'FUTSAL',
-              courtOrPitchCount: 2,
-              hasFloodlights: true,
-              hasParking: true,
-              hasChangingRooms: true,
-            },
-          ],
-        },
-        {
-          id: '2',
-          venueName: 'Colombo Indoor Sports Arena',
-          addressLine: 'Torrington Avenue',
-          city: 'Colombo 07',
-          district: 'Colombo',
-          province: 'Western',
-          contactPhone: '0112684210',
-          hourlyBaseRate: 2800,
-          isActive: true,
-          latitude: 6.9032,
-          longitude: 79.8711,
-          distanceKm: 3.1,
-          facilities: [
-            {
-              id: '2',
-              venueId: '2',
-              sportType: 'BADMINTON',
-              courtOrPitchCount: 4,
-              hasFloodlights: true,
-              hasParking: true,
-              hasChangingRooms: true,
-            },
-          ],
-        },
-        {
-          id: '3',
-          venueName: 'Thurstan Turf Cricket Complex',
-          addressLine: 'Thurstan Road',
-          city: 'Colombo 03',
-          district: 'Colombo',
-          province: 'Western',
-          contactPhone: '0112586741',
-          hourlyBaseRate: 4500,
-          isActive: true,
-          latitude: 6.9015,
-          longitude: 79.8601,
-          distanceKm: 3.8,
-          facilities: [
-            {
-              id: '3',
-              venueId: '3',
-              sportType: 'CRICKET',
-              courtOrPitchCount: 3,
-              hasFloodlights: true,
-              hasParking: false,
-              hasChangingRooms: true,
-            },
-          ],
-        },
-      ]);
+      console.warn('Failed to fetch venues from backend:', error);
+      setVenues([]);
     } finally {
       setLoading(false);
       setRefreshing(false);

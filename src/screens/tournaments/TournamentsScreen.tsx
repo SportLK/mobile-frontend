@@ -23,145 +23,7 @@ interface TournamentsScreenProps {
   onApplyOrganizer: () => void;
 }
 
-const FALLBACK_TOURNAMENTS: Tournament[] = [
-  {
-    id: 't-demo-1',
-    tournamentName: 'Colombo Premier T20 League 2026',
-    description: 'The pinnacle of grassroots cricket in Western Province featuring 16 registered club squads.',
-    sportType: 'CRICKET',
-    tournamentFormat: 'KNOCKOUT_SINGLE',
-    tournamentStatus: 'OPEN_FOR_REGISTRATION',
-    startDate: '2026-11-15',
-    endDate: '2026-11-28',
-    city: 'Colombo',
-    venue: {
-      id: 'v-1',
-      name: 'Colombo Oval',
-      city: 'Colombo',
-      sportType: 'CRICKET',
-      address: 'Colombo 07',
-      hourlyRate: 5000,
-      facilities: ['Floodlights', 'Dressing Rooms', 'Turf Wicket'],
-      isActive: true,
-      createdAt: '2026-01-01',
-    },
-    minParticipatingTeams: 8,
-    maxParticipatingTeams: 16,
-    confirmedTeamsCount: 12,
-    registrationFee: 15000,
-    prizePool: '150,000',
-    organizerId: 'org-demo-1',
-    organizer: {
-      id: 'org-demo-1',
-      displayName: 'Colombo Cricket Association',
-      email: 'cca@sportlk.com',
-    },
-    rules: 'Official ICC standard 20-over rules apply. White ball & team colored kits mandatory.',
-    createdAt: '2026-10-01',
-  },
-  {
-    id: 't-demo-2',
-    tournamentName: 'Kandy Inter-Club Futsal Championship',
-    description: 'High-octane 5-a-side futsal tournament held under floodlights.',
-    sportType: 'FOOTBALL',
-    tournamentFormat: 'KNOCKOUT_SINGLE',
-    tournamentStatus: 'ONGOING',
-    startDate: '2026-11-01',
-    endDate: '2026-11-18',
-    city: 'Kandy',
-    venue: {
-      id: 'v-2',
-      name: 'Kandy Sports Complex',
-      city: 'Kandy',
-      sportType: 'FUTSAL',
-      address: 'Kandy City Center',
-      hourlyRate: 4000,
-      facilities: ['Indoor Court', 'Scoreboard', 'Showers'],
-      isActive: true,
-      createdAt: '2026-01-01',
-    },
-    minParticipatingTeams: 4,
-    maxParticipatingTeams: 8,
-    confirmedTeamsCount: 8,
-    registrationFee: 10000,
-    prizePool: '80,000',
-    organizerId: 'org-demo-2',
-    organizer: {
-      id: 'org-demo-2',
-      displayName: 'Central Futsal Federation',
-      email: 'futsal@kandy.lk',
-    },
-    createdAt: '2026-10-05',
-  },
-  {
-    id: 't-demo-3',
-    tournamentName: 'Galle Open Badminton Masters',
-    description: 'Men and Women Open Singles and Doubles knockout tournament.',
-    sportType: 'BADMINTON',
-    tournamentFormat: 'KNOCKOUT_SINGLE',
-    tournamentStatus: 'OPEN_FOR_REGISTRATION',
-    startDate: '2026-12-05',
-    endDate: '2026-12-07',
-    city: 'Galle',
-    venue: {
-      id: 'v-3',
-      name: 'Galle Indoor Stadium',
-      city: 'Galle',
-      sportType: 'BADMINTON',
-      address: 'Galle Fort Road',
-      hourlyRate: 3500,
-      facilities: ['Wooden Courts', 'Air Conditioning'],
-      isActive: true,
-      createdAt: '2026-01-01',
-    },
-    minParticipatingTeams: 8,
-    maxParticipatingTeams: 32,
-    confirmedTeamsCount: 18,
-    registrationFee: 5000,
-    prizePool: '60,000',
-    organizerId: 'org-demo-3',
-    organizer: {
-      id: 'org-demo-3',
-      displayName: 'Southern Badminton Guild',
-      email: 'badminton@galle.lk',
-    },
-    createdAt: '2026-10-12',
-  },
-  {
-    id: 't-demo-4',
-    tournamentName: 'Western Province Basketball Blitz',
-    description: 'Annual 3x3 and 5x5 championship for university and club squads.',
-    sportType: 'BASKETBALL',
-    tournamentFormat: 'ROUND_ROBIN',
-    tournamentStatus: 'COMPLETED',
-    startDate: '2026-10-10',
-    endDate: '2026-10-18',
-    city: 'Colombo',
-    venue: {
-      id: 'v-4',
-      name: 'Sugathadasa Indoor Stadium',
-      city: 'Colombo',
-      sportType: 'BASKETBALL',
-      address: 'Sugathadasa, Colombo 14',
-      hourlyRate: 6000,
-      facilities: ['Electronic Scoreboard', 'Bleachers', 'VIP Lounge'],
-      isActive: true,
-      createdAt: '2026-01-01',
-    },
-    minParticipatingTeams: 6,
-    maxParticipatingTeams: 12,
-    confirmedTeamsCount: 12,
-    registrationFee: 8000,
-    prizePool: '75,000',
-    organizerId: 'org-demo-4',
-    organizer: {
-      id: 'org-demo-4',
-      displayName: 'WP Basketball League',
-      email: 'basketball@wp.lk',
-    },
-    createdAt: '2026-09-20',
-  },
-];
+const FALLBACK_TOURNAMENTS: Tournament[] = [];
 
 type StatusFilter = 'ALL' | 'OPEN' | 'ONGOING' | 'COMPLETED';
 
@@ -190,9 +52,7 @@ export default function TournamentsScreen({
         status: statusFilter === 'ALL' ? undefined : statusFilter === 'OPEN' ? 'OPEN_FOR_REGISTRATION' : statusFilter,
         search: search.trim() || undefined,
       });
-      if (Array.isArray(data) && data.length > 0) {
-        setTournaments(data);
-      }
+      setTournaments(Array.isArray(data) ? data : []);
     } catch {
       // Fallback
     }
@@ -210,7 +70,7 @@ export default function TournamentsScreen({
 
   const filteredTournaments = tournaments.filter((t) => {
     const rawStatus = t.tournamentStatus || (t as any).status || '';
-    if (statusFilter === 'OPEN' && rawStatus !== 'OPEN_FOR_REGISTRATION' && rawStatus !== 'OPEN') return false;
+    if (statusFilter === 'OPEN' && (rawStatus as string) !== 'OPEN_FOR_REGISTRATION' && (rawStatus as string) !== 'OPEN') return false;
     if (statusFilter === 'ONGOING' && rawStatus !== 'ONGOING') return false;
     if (statusFilter === 'COMPLETED' && rawStatus !== 'COMPLETED') return false;
 
@@ -219,7 +79,7 @@ export default function TournamentsScreen({
       const q = search.toLowerCase();
       const title = (t.tournamentName || (t as any).name || '').toLowerCase();
       const city = (t.city || '').toLowerCase();
-      const venue = (t.venue?.name || (t as any).venueName || '').toLowerCase();
+      const venue = (t.venue?.venueName || (t.venue as any)?.name || (t as any).venueName || '').toLowerCase();
       return title.includes(q) || city.includes(q) || venue.includes(q);
     }
     return true;
@@ -311,7 +171,7 @@ export default function TournamentsScreen({
             const rawStatus = t.tournamentStatus || (t as any).status || '';
             const stInfo = getStatusColor(rawStatus);
             const title = t.tournamentName || (t as any).name || 'Tournament';
-            const venue = t.venue?.name || (t as any).venueName || 'Colombo Grounds';
+            const venue = t.venue?.venueName || (t.venue as any)?.name || (t as any).venueName || 'Colombo Grounds';
             const confirmedTeams = t.confirmedTeamsCount ?? (t as any).registeredTeamsCount ?? 0;
             const maxTeams = t.maxParticipatingTeams ?? (t as any).maxTeams ?? 16;
 

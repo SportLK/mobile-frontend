@@ -1,20 +1,13 @@
-import { Platform } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
+import { getApiBaseUrl, getWsBaseUrl } from '../api';
 
-// Android emulator maps 10.0.2.2 to host machine's localhost; iOS uses localhost
-export const API_BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:3000/api/v1',
-  ios: 'http://localhost:3000/api/v1',
-  default: 'http://localhost:3000/api/v1',
-});
-
-export const WS_BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:3000',
-  ios: 'http://localhost:3000',
-  default: 'http://localhost:3000',
-});
+export const API_BASE_URL = getApiBaseUrl();
+export const WS_BASE_URL = getWsBaseUrl();
 
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const token = await SecureStore.getItemAsync('access_token').catch(() => null);
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}${endpoint}`;
   
   try {
     const response = await fetch(url, {
@@ -22,13 +15,21 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      throw new Error(`API Error (${response.status}): ${errorBody || response.statusText}`);
+      let errorMsg = errorBody || response.statusText;
+      try {
+        const parsed = JSON.parse(errorBody);
+        if (parsed.message) {
+          errorMsg = Array.isArray(parsed.message) ? parsed.message.join(', ') : parsed.message;
+        }
+      } catch {}
+      throw new Error(`API Error (${response.status}): ${errorMsg}`);
     }
 
     return await response.json();

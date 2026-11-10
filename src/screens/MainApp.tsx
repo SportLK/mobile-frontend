@@ -172,7 +172,7 @@ export default function MainApp() {
     const selected = posts.find((p) => p.id === id);
     if (!selected) return;
     setPosts((items) => items.map((p) => (p.id === id ? { ...p, liked: !p.liked, likes: p.likes + (p.liked ? -1 : 1) } : p)));
-    if (accessToken && !id.startsWith('demo-') && !id.startsWith('local-')) {
+    if (accessToken && !id.startsWith('local-')) {
       apiRequest(`/community/posts/${id}/like`, { method: 'POST' }, accessToken).catch(() => undefined);
     }
   }
@@ -220,7 +220,7 @@ export default function MainApp() {
     setPosts((items) => items.map((p) => (p.id === id ? { ...p, comments: p.comments + 1 } : p)));
     setCommentText('');
 
-    if (accessToken && !id.startsWith('demo-') && !id.startsWith('local-')) {
+    if (accessToken && !id.startsWith('local-')) {
       apiRequest(`/community/posts/${id}/comments`, {
         method: 'POST',
         body: JSON.stringify({ body }),
@@ -952,7 +952,7 @@ function Discover({
     setPendingId(id);
     try {
       let memberCount: number | undefined;
-      if (accessToken && !/^c[1-4]$/.test(id)) {
+      if (accessToken) {
         const result = await apiRequest<{ isMember: boolean; memberCount: number }>(`/communities/${id}/join`, {
           method: community.joined ? 'DELETE' : 'POST',
         }, accessToken);

@@ -28,186 +28,10 @@ interface TeamsScreenProps {
   onBack?: () => void;
 }
 
-// ── Realistic Grassroots Mock Fallback Data ──────────────────────────────────
-const FALLBACK_TEAMS: Team[] = [
-  {
-    id: 'team-demo-1',
-    managerId: 'user-manager-1',
-    teamName: 'Colombo Lions Cricket Club',
-    sportType: 'CRICKET',
-    primaryLocationCity: 'Colombo',
-    teamBio: 'Premier grassroots cricket club competing in the Colombo Division League. Home to passionate athletes training at the Colombo Oval.',
-    status: 'ACTIVE',
-    createdAt: '2026-01-15',
-    playersCount: 5,
-    manager: {
-      id: 'user-manager-1',
-      displayName: 'Avishka Perera',
-      email: 'avishka@sportlk.com',
-    },
-    members: [
-      {
-        id: 'm-1',
-        teamId: 'team-demo-1',
-        userId: 'user-manager-1',
-        memberRole: 'CAPTAIN',
-        jerseyNumber: 7,
-        joinedAt: '2026-01-15',
-        user: { id: 'user-manager-1', displayName: 'Avishka Perera', email: 'avishka@sportlk.com' },
-      },
-      {
-        id: 'm-2',
-        teamId: 'team-demo-1',
-        userId: 'u-2',
-        memberRole: 'VICE_CAPTAIN',
-        jerseyNumber: 18,
-        joinedAt: '2026-01-20',
-        user: { id: 'u-2', displayName: 'Kusal Mendis', email: 'kusal@sportlk.com' },
-      },
-      {
-        id: 'm-3',
-        teamId: 'team-demo-1',
-        userId: 'u-3',
-        memberRole: 'SQUAD_PLAYER',
-        jerseyNumber: 45,
-        joinedAt: '2026-02-01',
-        user: { id: 'u-3', displayName: 'Dinesh Chandimal', email: 'dinesh@sportlk.com' },
-      },
-      {
-        id: 'm-4',
-        teamId: 'team-demo-1',
-        userId: 'u-4',
-        memberRole: 'SQUAD_PLAYER',
-        jerseyNumber: 99,
-        joinedAt: '2026-02-10',
-        user: { id: 'u-4', displayName: 'Nuwan Pradeep', email: 'nuwan@sportlk.com' },
-      },
-      {
-        id: 'm-5',
-        teamId: 'team-demo-1',
-        userId: 'u-5',
-        memberRole: 'SQUAD_PLAYER',
-        jerseyNumber: 23,
-        joinedAt: '2026-02-15',
-        user: { id: 'u-5', displayName: 'Sanath Fernando', email: 'sanath@sportlk.com' },
-      },
-    ],
-  },
-  {
-    id: 'team-demo-2',
-    managerId: 'u-roshan',
-    teamName: 'Kandy Thunder Futsal',
-    sportType: 'FOOTBALL',
-    primaryLocationCity: 'Kandy',
-    teamBio: 'Dynamic 5v5 futsal squad training at Kandy Sports Complex. Looking for fast wingers and competitive friendly matches.',
-    status: 'ACTIVE',
-    createdAt: '2026-02-01',
-    playersCount: 4,
-    manager: {
-      id: 'u-roshan',
-      displayName: 'Roshan De Silva',
-      email: 'roshan@kandy.lk',
-    },
-    members: [
-      {
-        id: 'm-6',
-        teamId: 'team-demo-2',
-        userId: 'u-roshan',
-        memberRole: 'CAPTAIN',
-        jerseyNumber: 10,
-        joinedAt: '2026-02-01',
-        user: { id: 'u-roshan', displayName: 'Roshan De Silva', email: 'roshan@kandy.lk' },
-      },
-      {
-        id: 'm-7',
-        teamId: 'team-demo-2',
-        userId: 'u-kasun',
-        memberRole: 'VICE_CAPTAIN',
-        jerseyNumber: 9,
-        joinedAt: '2026-02-05',
-        user: { id: 'u-kasun', displayName: 'Kasun Bandara', email: 'kasun@kandy.lk' },
-      },
-    ],
-  },
-  {
-    id: 'team-demo-3',
-    managerId: 'u-kamal',
-    teamName: 'Galle Smashers Badminton',
-    sportType: 'BADMINTON',
-    primaryLocationCity: 'Galle',
-    teamBio: 'Competitive badminton squad based in Southern Province. Active in regional doubles and singles fixtures.',
-    status: 'ACTIVE',
-    createdAt: '2026-02-15',
-    playersCount: 3,
-    manager: {
-      id: 'u-kamal',
-      displayName: 'Kamal Jayawardena',
-      email: 'kamal@galle.lk',
-    },
-    members: [
-      {
-        id: 'm-8',
-        teamId: 'team-demo-3',
-        userId: 'u-kamal',
-        memberRole: 'CAPTAIN',
-        jerseyNumber: 1,
-        joinedAt: '2026-02-15',
-        user: { id: 'u-kamal', displayName: 'Kamal Jayawardena', email: 'kamal@galle.lk' },
-      },
-    ],
-  },
-];
-
-const FALLBACK_INVITATIONS: TeamInvitation[] = [
-  {
-    id: 'inv-1',
-    teamId: 'team-demo-1',
-    invitedUserId: 'u-sahan',
-    inviteType: 'MANAGER_TO_PLAYER',
-    status: 'PENDING',
-    createdAt: '2026-11-01',
-    invitedUser: { id: 'u-sahan', displayName: 'Sahan Wickramasinghe', email: 'sahan@sportlk.com' },
-  },
-];
-
-const FALLBACK_JOIN_REQUESTS: TeamInvitation[] = [
-  {
-    id: 'req-1',
-    teamId: 'team-demo-1',
-    invitedUserId: 'u-charith',
-    inviteType: 'PLAYER_REQUEST_TO_JOIN',
-    status: 'PENDING',
-    createdAt: '2026-11-05',
-    invitedUser: { id: 'u-charith', displayName: 'Charith Asalanka', email: 'charith@sportlk.com' },
-  },
-];
-
-const FALLBACK_CHALLENGES: TeamChallenge[] = [
-  {
-    id: 'ch-1',
-    challengerTeamId: 'team-demo-2',
-    challengedTeamId: 'team-demo-1',
-    sportType: 'FOOTBALL',
-    proposedMatchDate: '2026-11-20T16:00:00Z',
-    status: 'PENDING',
-    venueName: 'CR&FC Grounds, Colombo',
-    createdAt: '2026-11-04',
-    challengerTeam: FALLBACK_TEAMS[1],
-    challengedTeam: FALLBACK_TEAMS[0],
-  },
-  {
-    id: 'ch-2',
-    challengerTeamId: 'team-demo-1',
-    challengedTeamId: 'team-demo-3',
-    sportType: 'CRICKET',
-    proposedMatchDate: '2026-11-28T14:30:00Z',
-    status: 'ACCEPTED',
-    venueName: 'Colombo Oval',
-    createdAt: '2026-11-02',
-    challengerTeam: FALLBACK_TEAMS[0],
-    challengedTeam: FALLBACK_TEAMS[2],
-  },
-];
+const FALLBACK_TEAMS: Team[] = [];
+const FALLBACK_INVITATIONS: TeamInvitation[] = [];
+const FALLBACK_JOIN_REQUESTS: TeamInvitation[] = [];
+const FALLBACK_CHALLENGES: TeamChallenge[] = [];
 
 export default function TeamsScreen({ onBack }: TeamsScreenProps) {
   const { accessToken, userName, userEmail } = useAuth();
@@ -259,9 +83,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
         sportType: selectedSport === 'All' ? undefined : selectedSport.toUpperCase(),
         search: search.trim() || undefined,
       });
-      if (Array.isArray(data) && data.length > 0) {
-        setTeams(data);
-      }
+      setTeams(Array.isArray(data) ? data : []);
     } catch {
       // Kept fallback teams
     }
@@ -282,8 +104,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
     return (
       team.managerId === userName ||
       team.manager?.displayName === userName ||
-      team.manager?.email === userEmail ||
-      team.id === 'team-demo-1'
+      team.manager?.email === userEmail
     );
   };
 
@@ -1597,6 +1418,7 @@ const s = StyleSheet.create({
   matchupVs: { fontSize: 11, fontWeight: '800', color: '#9CA3AF', paddingHorizontal: 6 },
   matchupRowText: { fontSize: 13, fontWeight: '700', color: '#111827', marginBottom: 6 },
   matchupMeta: { gap: 3, marginBottom: 8 },
+  matchupMetaText: { fontSize: 11, color: '#4B5563' },
   detailItem: { fontSize: 11, color: '#4B5563' },
   challengeActionsRow: { flexDirection: 'row', gap: 8, marginTop: 8 },
   acceptBtn: { flex: 1, backgroundColor: '#059669', paddingVertical: 7, borderRadius: 6, alignItems: 'center' },

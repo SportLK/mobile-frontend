@@ -34,23 +34,51 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | undefined>();
   const [refreshToken, setRefreshToken] = useState<string | undefined>();
-  const [userName, setUserName] = useState('Tharindu Jayawardena');
-  const [userEmail, setUserEmail] = useState('tharindu@email.com');
-  const [userCity, setUserCity] = useState('Colombo');
+  const [userName, setUserName] = useState('');
+  const [userEmail, setUserEmail] = useState('');
+  const [userCity, setUserCity] = useState('');
   const [roles, setRoles] = useState<Workspace[]>(['player']);
   const [workspace, setWorkspace] = useState<Workspace>('player');
-  const [authenticated, setAuthenticated] = useState(true); // demo mode on
+  const [authenticated, setAuthenticated] = useState<boolean>(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Restore tokens from secure storage on app start
   useEffect(() => {
-    SecureStore.getItemAsync('access_token').then((token) => {
-      if (token) setAccessToken(token);
-    });
-    SecureStore.getItemAsync('refresh_token').then((token) => {
-      if (token) setRefreshToken(token);
-    });
+    async function restoreSession() {
+      try {
+        const token = await SecureStore.getItemAsync('access_token');
+        const refresh = await SecureStore.getItemAsync('refresh_token');
+        if (token) {
+          setAccessToken(token);
+          setRefreshToken(refresh ?? undefined);
+          setAuthenticated(true);
+          // Fetch live user profile
+          const profile = await apiRequest<{
+            id: string;
+            displayName: string;
+            email: string;
+            roles: string[];
+            city?: string | null;
+          }>('/users/me', {}, token);
+          setUserName(profile.displayName || 'Player');
+          setUserEmail(profile.email || '');
+          setUserCity(profile.city ?? '');
+          const filteredRoles = (profile.roles || []).filter(
+            (r): r is Workspace => r !== 'admin',
+          );
+          if (filteredRoles.length > 0) {
+            setRoles(filteredRoles);
+            setWorkspace(filteredRoles[0]);
+          }
+        } else {
+          setAuthenticated(false);
+        }
+      } catch {
+        setAuthenticated(false);
+      }
+    }
+    restoreSession();
   }, []);
 
   // Auto-refresh access token ~1 min before it expires (15 min TTL)
@@ -83,8 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             method: 'POST',
             body: JSON.stringify(
               authMode === 'login'
-                ? { email, password }
-                : { email, password, displayName: name },
+                ? { email: email.trim(), password }
+                : { email: email.trim(), password, displayName: name.trim() },
             ),
           },
         );
@@ -98,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const filteredRoles = response.user.roles.filter(
           (r): r is Workspace => r !== 'admin',
         );
-        setRoles(filteredRoles);
+        setRoles(filteredRoles.length > 0 ? filteredRoles : ['player']);
         setWorkspace(filteredRoles[0] ?? 'player');
         setAuthenticated(true);
       } finally {
