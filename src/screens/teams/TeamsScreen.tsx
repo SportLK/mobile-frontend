@@ -1492,8 +1492,8 @@ const s = StyleSheet.create({
   cancelInviteText: { color: '#6B7280', fontSize: 10, fontWeight: '600' },
 
   // Forms & Dialog Modals
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 18 },
-  modalBox: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 18 },
+  modalBox: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, width: '100%', maxWidth: 520, maxHeight: '90%', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 4 },
   modalTitle: { fontSize: 17, fontWeight: '800', color: '#111827', marginBottom: 4 },
   modalSub: { fontSize: 11, color: '#6B7280', lineHeight: 15, marginBottom: 12 },
   inputLabel: { fontSize: 10, fontWeight: '800', color: '#4B5563', marginBottom: 5, marginTop: 8, letterSpacing: 0.5 },

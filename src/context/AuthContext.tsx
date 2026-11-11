@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 import React, {
   createContext,
   useCallback,
@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     async function restoreSession() {
       try {
-        const token = await SecureStore.getItemAsync('access_token');
-        const refresh = await SecureStore.getItemAsync('refresh_token');
+        const token = await storage.getItem('access_token');
+        const refresh = await storage.getItem('refresh_token');
         if (token) {
           setAccessToken(token);
           setRefreshToken(refresh ?? undefined);
@@ -92,8 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         setAccessToken(session.accessToken);
         setRefreshToken(session.refreshToken);
-        await SecureStore.setItemAsync('access_token', session.accessToken);
-        await SecureStore.setItemAsync('refresh_token', session.refreshToken);
+        await storage.setItem('access_token', session.accessToken);
+        await storage.setItem('refresh_token', session.refreshToken);
       } catch {
         handleSignOut();
       }
@@ -116,8 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ),
           },
         );
-        await SecureStore.setItemAsync('access_token', response.accessToken);
-        await SecureStore.setItemAsync('refresh_token', response.refreshToken);
+        await storage.setItem('access_token', response.accessToken);
+        await storage.setItem('refresh_token', response.refreshToken);
         setAccessToken(response.accessToken);
         setRefreshToken(response.refreshToken);
         setUserName(response.user.displayName);
@@ -142,8 +142,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         () => undefined,
       );
     }
-    SecureStore.deleteItemAsync('access_token');
-    SecureStore.deleteItemAsync('refresh_token');
+    storage.deleteItem('access_token');
+    storage.deleteItem('refresh_token');
     setAccessToken(undefined);
     setRefreshToken(undefined);
     setAuthenticated(false);

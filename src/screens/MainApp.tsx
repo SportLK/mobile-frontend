@@ -1410,8 +1410,17 @@ function ReportModal({
 
 // ── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.paper },
-  appFrame: { flex: 1, backgroundColor: COLORS.paper },
+  safe: {
+    flex: 1,
+    backgroundColor: COLORS.paper,
+    alignItems: 'center',
+  },
+  appFrame: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 640,
+    backgroundColor: COLORS.paper,
+  },
   header: {
     minHeight: 60,
     paddingHorizontal: 16,
@@ -1483,6 +1492,7 @@ const s = StyleSheet.create({
     position: 'relative',
     borderRadius: 16,
     paddingHorizontal: 18,
+    paddingRight: 88,
     paddingTop: 16,
     paddingBottom: 14,
     backgroundColor: '#17263B',
@@ -1853,9 +1863,19 @@ const s = StyleSheet.create({
   signOutText: { color: '#DC2626', fontSize: 11, fontWeight: '700' },
 
   // Modals Sheet
-  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15,25,38,.45)' },
-  sheet: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 24, borderTopLeftRadius: 20, borderTopRightRadius: 20, backgroundColor: '#FFFFFF', maxHeight: '92%' },
-  nameEditCard: { padding: 18, borderRadius: 16, backgroundColor: '#FFFFFF', margin: 20 },
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', backgroundColor: 'rgba(15,25,38,.45)' },
+  sheet: {
+    width: '100%',
+    maxWidth: 640,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 24,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: '#FFFFFF',
+    maxHeight: '92%',
+  },
+  nameEditCard: { width: '100%', maxWidth: 420, alignSelf: 'center', padding: 18, borderRadius: 16, backgroundColor: '#FFFFFF', margin: 20 },
   nameSaveButton: { marginTop: 14 },
   sheetHandle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 3, marginBottom: 12, backgroundColor: '#D1D5DB' },
   sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -1883,7 +1903,7 @@ const s = StyleSheet.create({
   reviewNoticeIcon: { fontSize: 14 },
   reviewNoticeText: { flex: 1, color: '#4B5563', fontSize: 10, lineHeight: 14 },
   confirmBackdrop: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, backgroundColor: 'rgba(15,25,38,.5)' },
-  confirmCard: { width: '100%', padding: 18, borderRadius: 14, backgroundColor: '#FFF' },
+  confirmCard: { width: '100%', maxWidth: 440, padding: 18, borderRadius: 14, backgroundColor: '#FFF' },
   confirmIcon: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: '#FEE2E2' },
   confirmTitle: { marginTop: 10, color: '#111827', fontSize: 16, fontWeight: '800' },
   confirmDescription: { marginTop: 4, color: '#6B7280', fontSize: 11, lineHeight: 15 },

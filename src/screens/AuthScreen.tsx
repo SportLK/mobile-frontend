@@ -168,14 +168,15 @@ export default function AuthScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F6F4EF' },
-  frame: { flex: 1 },
+  safe: { flex: 1, backgroundColor: '#F6F4EF', alignItems: 'center' },
+  frame: { flex: 1, width: '100%', maxWidth: 440 },
   content: {
     flexGrow: 1,
     paddingHorizontal: 25,
     paddingTop: 25,
     paddingBottom: 18,
     justifyContent: 'center',
+    width: '100%',
   },
   brand: {
     flexDirection: 'row',

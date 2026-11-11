@@ -1,11 +1,11 @@
-import * as SecureStore from 'expo-secure-store';
+import { storage } from '../utils/storage';
 import { getApiBaseUrl, getWsBaseUrl } from '../api';
 
 export const API_BASE_URL = getApiBaseUrl();
 export const WS_BASE_URL = getWsBaseUrl();
 
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = await SecureStore.getItemAsync('access_token').catch(() => null);
+  const token = await storage.getItem('access_token');
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
   
