@@ -44,6 +44,13 @@ import {
 } from '../components/NavIcons';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+function getInitials(name?: string | null, fallback = 'PL'): string {
+  if (!name || typeof name !== 'string') return fallback;
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return fallback;
+  return parts.slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+}
+
 function bubbleStyle(color: string) {
   if (color === 'blue') return s.bubble_blue;
   if (color === 'green') return s.bubble_green;
@@ -56,16 +63,16 @@ export type MainTab = 'Home' | 'Community' | 'Tournaments' | 'Venues' | 'Profile
 // ── Main App Shell ───────────────────────────────────────────────────────────
 export default function MainApp() {
   const {
-    accessToken, refreshToken, userName, userEmail, userCity,
+    userId, accessToken, refreshToken, userName, userEmail, userCity,
     roles, workspace, setWorkspace, signOut, setUserName, setUserCity, setRoles,
   } = useAuth();
 
   const [tab, setTab] = useState<MainTab>('Home');
-  const [posts, setPosts] = useState(startingPosts);
+  const [posts, setPosts] = useState<FeedPost[]>([]);
   const [commentsByPost, setCommentsByPost] = useState<Record<string, FeedComment[]>>({});
-  const [notifications, setNotifications] = useState(starterNotifications);
-  const [communities, setCommunities] = useState(starterCommunities);
-  const [interests, setInterests] = useState(['Cricket', 'Badminton', 'Running']);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [interests, setInterests] = useState<string[]>([]);
   const [applications, setApplications] = useState<RoleApplication[]>([]);
 
   // Modals
@@ -92,7 +99,7 @@ export default function MainApp() {
   const [teamsModalOpen, setTeamsModalOpen] = useState(false);
   const [alertsModalOpen, setAlertsModalOpen] = useState(false);
 
-  const firstName = userName ? userName.split(' ')[0] : 'Player';
+  const firstName = (userName || 'Player').split(' ')[0] || 'Player';
   const unreadCount = notifications.filter((n) => n.unread).length;
   const joinedCount = useMemo(() => communities.filter((c) => c.joined).length, [communities]);
   const currentWorkspaceLabel = workspaces.find((w) => w.key === workspace)?.label ?? 'Player';
@@ -111,19 +118,23 @@ export default function MainApp() {
   useEffect(() => {
     if (!accessToken) return;
 
-    apiRequest<Array<{ id: string; authorId: string; body: string; sport?: string; likesCount: number; commentsCount: number; createdAt: string }>>('/community/posts', {}, accessToken)
-      .then((items) => setPosts(items.map((item) => ({
-        id: item.id,
-        author: 'SportLK Player',
-        initials: 'SP',
-        community: item.sport ? `${item.sport} Community` : 'SportLK Community',
-        ago: 'Recently',
-        sport: item.sport ?? 'Community',
-        body: item.body,
-        likes: item.likesCount,
-        comments: item.commentsCount,
-        liked: false,
-      }))))
+    apiRequest<Array<{ id: string; authorId: string; authorName?: string; body: string; sport?: string; likesCount: number; commentsCount: number; createdAt: string }>>('/community/posts', {}, accessToken)
+      .then((items) => setPosts(items.map((item) => {
+        const isMine = (userId && item.authorId === userId) || (item.authorId === userName);
+        const authorName = item.authorName || (isMine ? userName : 'Community Athlete');
+        return {
+          id: item.id,
+          author: authorName,
+          initials: getInitials(authorName, 'PL'),
+          community: item.sport ? `${item.sport} Community` : 'SportLK Community',
+          ago: 'Recently',
+          sport: item.sport ?? 'Community',
+          body: item.body,
+          likes: item.likesCount,
+          comments: item.commentsCount,
+          liked: false,
+        };
+      })))
       .catch(() => undefined);
 
     apiRequest<Array<{ id: string; name: string; sport: string; location?: string; memberCount: number; isMember: boolean }>>('/communities', {}, accessToken)
@@ -139,11 +150,14 @@ export default function MainApp() {
       }))))
       .catch(() => undefined);
 
-    apiRequest<{ id: string; displayName: string; email: string; roles: AuthResponse['user']['roles']; sports: string[]; city?: string | null }>('/users/me', {}, accessToken)
+    apiRequest<{ id: string; displayName?: string; fullName?: string; email?: string; roles?: AuthResponse['user']['roles']; sports?: string[]; city?: string | null }>('/users/me', {}, accessToken)
       .then((profile) => {
-        setUserName(profile.displayName);
+        setUserName(profile.displayName || profile.fullName || 'Player');
         setUserCity(profile.city ?? '');
-        setRoles(profile.roles.filter((r): r is Workspace => r !== 'admin'));
+        if (Array.isArray(profile.roles)) {
+          const userRoles = profile.roles.filter((r): r is Workspace => r !== 'admin');
+          if (userRoles.length > 0) setRoles(userRoles);
+        }
         setInterests(profile.sports ?? []);
       })
       .catch(() => undefined);
@@ -182,8 +196,8 @@ export default function MainApp() {
     if (!body) return;
     const post: FeedPost = {
       id: `local-${Date.now()}`,
-      author: userName,
-      initials: userName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase(),
+      author: userName || 'SportLK Player',
+      initials: getInitials(userName, 'SP'),
       community: 'Your sports community',
       ago: 'Just now',
       sport: interests[0] ?? 'Community',
@@ -310,7 +324,7 @@ export default function MainApp() {
 
             <Pressable style={s.headerAvatar} onPress={() => setTab('Profile')}>
               <Text style={s.headerAvatarText}>
-                {userName.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}
+                {getInitials(userName, 'PL')}
               </Text>
             </Pressable>
           </View>
@@ -379,6 +393,8 @@ export default function MainApp() {
             roles={roles}
             workspace={workspace}
             applications={applications}
+            communitiesCount={joinedCount}
+            postsCount={posts.filter((p) => p.author === userName).length}
             onToggleInterest={toggleInterest}
             onWorkspace={setWorkspace}
             onOpenTeams={() => setTeamsModalOpen(true)}
@@ -646,7 +662,7 @@ function HomeFeed({
             <View style={s.liveChip}><Text style={s.liveChipText}>LIVE</Text></View>
           </View>
           <Text style={s.hubCardTitle}>Matches & Scores</Text>
-          <Text style={s.hubCardSub}>Colombo Lions CC vs Kandy Kings CC · Over 14.2</Text>
+          <Text style={s.hubCardSub}>Track live ball-by-ball matches & scoring</Text>
           <Text style={s.hubCardLink}>View Live Score →</Text>
         </TouchableOpacity>
 
@@ -657,7 +673,7 @@ function HomeFeed({
             <View style={s.openChip}><Text style={s.openChipText}>OPEN</Text></View>
           </View>
           <Text style={s.hubCardTitle}>Tournaments</Text>
-          <Text style={s.hubCardSub}>Colombo Premier T20 League · 12 / 16 Teams</Text>
+          <Text style={s.hubCardSub}>Browse tournaments, standings & brackets</Text>
           <Text style={s.hubCardLink}>Browse Tournaments →</Text>
         </TouchableOpacity>
       </View>
@@ -681,7 +697,7 @@ function HomeFeed({
             <View style={[s.openChip, { backgroundColor: '#E0E7FF' }]}><Text style={[s.openChipText, { color: '#3730A3' }]}>GROUNDS</Text></View>
           </View>
           <Text style={s.hubCardTitle}>Nearby Venues</Text>
-          <Text style={s.hubCardSub}>Colombo Oval, CR&FC Grounds, Sugathadasa</Text>
+          <Text style={s.hubCardSub}>Find sports facilities & book training grounds</Text>
           <Text style={s.hubCardLink}>Find Grounds →</Text>
         </TouchableOpacity>
       </View>
@@ -697,14 +713,21 @@ function HomeFeed({
         </TouchableOpacity>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.communityStrip}>
-        {communities.filter((c) => c.joined).map((c) => (
-          <View style={s.communityBubbleWrap} key={c.id}>
-            <View style={[s.communityBubble, bubbleStyle(c.color)]}>
-              <Text style={s.communityEmoji}>{c.initials}</Text>
+        {communities.filter((c) => c.joined).length === 0 ? (
+          <Pressable style={s.emptyJoinedStrip} onPress={() => onNavigateTab('Community')}>
+            <Text style={s.emptyJoinedText}>You haven't joined any clubs or groups yet.</Text>
+            <Text style={s.emptyJoinedLink}>Discover communities near you →</Text>
+          </Pressable>
+        ) : (
+          communities.filter((c) => c.joined).map((c) => (
+            <View style={s.communityBubbleWrap} key={c.id}>
+              <View style={[s.communityBubble, bubbleStyle(c.color)]}>
+                <Text style={s.communityEmoji}>{c.initials}</Text>
+              </View>
+              <Text style={s.communityBubbleName} numberOfLines={1}>{(c.name || '').split(' ')[0]}</Text>
             </View>
-            <Text style={s.communityBubbleName} numberOfLines={1}>{c.name.split(' ')[0]}</Text>
-          </View>
-        ))}
+          ))
+        )}
         <Pressable style={s.communityBubbleWrap} onPress={() => onNavigateTab('Community')}>
           <View style={s.addCommunityBubble}><Text style={s.addCommunityPlus}>＋</Text></View>
           <Text style={s.communityBubbleName}>Discover</Text>
@@ -723,26 +746,39 @@ function HomeFeed({
         </View>
       </View>
       <Pressable style={s.quickCompose} onPress={onCompose}>
-        <View style={s.quickAvatar}><Text style={s.quickAvatarText}>{firstName.slice(0, 1)}</Text></View>
+        <View style={s.quickAvatar}><Text style={s.quickAvatarText}>{(firstName || 'P').slice(0, 1)}</Text></View>
         <Text style={s.quickPlaceholder}>What's happening in your game?</Text>
         <View style={s.quickPlus}><Text style={s.quickPlusText}>＋</Text></View>
       </Pressable>
 
-      {posts.map((post, index) => (
-        <PostCard
-          key={post.id}
-          post={post}
-          comments={commentsByPost[post.id] ?? []}
-          index={index}
-          onLike={() => onLike(post.id)}
-          onReport={() => onReport(post)}
-          onComment={() => onComment(post.id)}
-          commenting={commentingPost === post.id}
-          commentText={commentText}
-          setCommentText={setCommentText}
-          onSubmitComment={() => onSubmitComment(post.id)}
-        />
-      ))}
+      {posts.length === 0 ? (
+        <View style={s.emptyFeedCard}>
+          <Text style={s.emptyFeedIcon}>💬</Text>
+          <Text style={s.emptyFeedTitle}>No community posts yet</Text>
+          <Text style={s.emptyFeedSub}>
+            Be the first athlete to share a training update, score, or match report!
+          </Text>
+          <TouchableOpacity style={s.emptyFeedBtn} onPress={onCompose}>
+            <Text style={s.emptyFeedBtnText}>Create first post →</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        posts.map((post, index) => (
+          <PostCard
+            key={post.id}
+            post={post}
+            comments={commentsByPost[post.id] ?? []}
+            index={index}
+            onLike={() => onLike(post.id)}
+            onReport={() => onReport(post)}
+            onComment={() => onComment(post.id)}
+            commenting={commentingPost === post.id}
+            commentText={commentText}
+            setCommentText={setCommentText}
+            onSubmitComment={() => onSubmitComment(post.id)}
+          />
+        ))
+      )}
       <View style={s.feedEnd}>
         <Text style={s.feedEndStar}>✦</Text>
         <Text style={s.feedEndText}>You're all caught up</Text>
@@ -811,26 +847,39 @@ function CommunityScreen({
       {subTab === 'feed' ? (
         <ScrollView style={s.scroll} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
           <Pressable style={s.quickCompose} onPress={onCompose}>
-            <View style={s.quickAvatar}><Text style={s.quickAvatarText}>{firstName.slice(0, 1)}</Text></View>
+            <View style={s.quickAvatar}><Text style={s.quickAvatarText}>{(firstName || 'P').slice(0, 1)}</Text></View>
             <Text style={s.quickPlaceholder}>Share your scores, training, or thoughts...</Text>
             <View style={s.quickPlus}><Text style={s.quickPlusText}>＋</Text></View>
           </Pressable>
 
-          {posts.map((post, index) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              comments={commentsByPost[post.id] ?? []}
-              index={index}
-              onLike={() => onLike(post.id)}
-              onReport={() => onReport(post)}
-              onComment={() => onComment(post.id)}
-              commenting={commentingPost === post.id}
-              commentText={commentText}
-              setCommentText={setCommentText}
-              onSubmitComment={() => onSubmitComment(post.id)}
-            />
-          ))}
+          {posts.length === 0 ? (
+            <View style={s.emptyFeedCard}>
+              <Text style={s.emptyFeedIcon}>💬</Text>
+              <Text style={s.emptyFeedTitle}>No community posts yet</Text>
+              <Text style={s.emptyFeedSub}>
+                Be the first athlete to share a training update, score, or match report!
+              </Text>
+              <TouchableOpacity style={s.emptyFeedBtn} onPress={onCompose}>
+                <Text style={s.emptyFeedBtnText}>Create first post →</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            posts.map((post, index) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                comments={commentsByPost[post.id] ?? []}
+                index={index}
+                onLike={() => onLike(post.id)}
+                onReport={() => onReport(post)}
+                onComment={() => onComment(post.id)}
+                commenting={commentingPost === post.id}
+                commentText={commentText}
+                setCommentText={setCommentText}
+                onSubmitComment={() => onSubmitComment(post.id)}
+              />
+            ))
+          )}
         </ScrollView>
       ) : (
         <Discover communities={communities} setCommunities={setCommunities} accessToken={accessToken} />
@@ -988,19 +1037,27 @@ function Discover({
       <View style={s.sectionHead}>
         <View><Text style={s.sectionTitle}>Popular near you</Text><Text style={s.sectionSub}>Active groups across Sri Lanka</Text></View>
       </View>
-      {visible.map((c) => (
-        <View style={s.discoverCard} key={c.id}>
-          <View style={[s.discoverIcon, bubbleStyle(c.color)]}><Text style={s.discoverEmoji}>{c.initials}</Text></View>
-          <View style={s.discoverInfo}>
-            <Text style={s.discoverName}>{c.name}</Text>
-            <Text style={s.discoverMeta}>{c.sport} <Text style={s.postMetaDot}>·</Text> {c.location}</Text>
-            <Text style={s.discoverMembers}>{c.members} players</Text>
-          </View>
-          <Pressable style={[s.joinButton, c.joined && s.joinedButton]} onPress={() => join(c.id)}>
-            <Text style={[s.joinButtonText, c.joined && s.joinedButtonText]}>{c.joined ? 'Joined' : 'Join'}</Text>
-          </Pressable>
+      {visible.length === 0 ? (
+        <View style={s.emptyFeedCard}>
+          <Text style={s.emptyFeedIcon}>🔍</Text>
+          <Text style={s.emptyFeedTitle}>No communities found</Text>
+          <Text style={s.emptyFeedSub}>No sports clubs match this category yet.</Text>
         </View>
-      ))}
+      ) : (
+        visible.map((c) => (
+          <View style={s.discoverCard} key={c.id}>
+            <View style={[s.discoverIcon, bubbleStyle(c.color)]}><Text style={s.discoverEmoji}>{c.initials}</Text></View>
+            <View style={s.discoverInfo}>
+              <Text style={s.discoverName}>{c.name}</Text>
+              <Text style={s.discoverMeta}>{c.sport} <Text style={s.postMetaDot}>·</Text> {c.location}</Text>
+              <Text style={s.discoverMembers}>{c.members} players</Text>
+            </View>
+            <Pressable style={[s.joinButton, c.joined && s.joinedButton]} onPress={() => join(c.id)}>
+              <Text style={[s.joinButtonText, c.joined && s.joinedButtonText]}>{c.joined ? 'Joined' : 'Join'}</Text>
+            </Pressable>
+          </View>
+        ))
+      )}
     </ScrollView>
   );
 }
@@ -1024,26 +1081,34 @@ function Alerts({
         <View style={s.alertCount}><View style={s.alertCountDot} /><Text style={s.alertCountText}>{notifications.filter((n) => n.unread).length} unread</Text></View>
         <Pressable onPress={onMarkAll}><Text style={s.markReadText}>Mark all as read</Text></Pressable>
       </View>
-      {notifications.map((n, index) => (
-        <Pressable
-          key={n.id}
-          style={[s.notificationCard, n.unread && s.notificationUnread]}
-          onPress={() => {
-            setNotifications((items) => items.map((i) => i.id === n.id ? { ...i, unread: false } : i));
-            onRead(n.id);
-          }}
-        >
-          <View style={[s.notificationIcon, index === 0 ? s.notifWelcome : index === 1 ? s.notifLike : s.notifCommunity]}>
-            <Text>{index === 0 ? '✦' : index === 1 ? '♥' : '●'}</Text>
-          </View>
-          <View style={s.notificationCopy}>
-            <Text style={s.notificationTitle}>{n.title}</Text>
-            <Text style={s.notificationBody}>{n.body}</Text>
-            <Text style={s.notificationTime}>{n.ago}</Text>
-          </View>
-          {n.unread && <View style={s.unreadDot} />}
-        </Pressable>
-      ))}
+      {notifications.length === 0 ? (
+        <View style={s.emptyFeedCard}>
+          <Text style={s.emptyFeedIcon}>🔔</Text>
+          <Text style={s.emptyFeedTitle}>All caught up</Text>
+          <Text style={s.emptyFeedSub}>You have no notifications or match alerts at this time.</Text>
+        </View>
+      ) : (
+        notifications.map((n, index) => (
+          <Pressable
+            key={n.id}
+            style={[s.notificationCard, n.unread && s.notificationUnread]}
+            onPress={() => {
+              setNotifications((items) => items.map((i) => i.id === n.id ? { ...i, unread: false } : i));
+              onRead(n.id);
+            }}
+          >
+            <View style={[s.notificationIcon, index === 0 ? s.notifWelcome : index === 1 ? s.notifLike : s.notifCommunity]}>
+              <Text>{index === 0 ? '✦' : index === 1 ? '♥' : '●'}</Text>
+            </View>
+            <View style={s.notificationCopy}>
+              <Text style={s.notificationTitle}>{n.title}</Text>
+              <Text style={s.notificationBody}>{n.body}</Text>
+              <Text style={s.notificationTime}>{n.ago}</Text>
+            </View>
+            {n.unread && <View style={s.unreadDot} />}
+          </Pressable>
+        ))
+      )}
     </ScrollView>
   );
 }
@@ -1057,6 +1122,8 @@ function Profile({
   roles,
   workspace,
   applications,
+  communitiesCount,
+  postsCount,
   onToggleInterest,
   onWorkspace,
   onOpenTeams,
@@ -1074,6 +1141,8 @@ function Profile({
   roles: Workspace[];
   workspace: Workspace;
   applications: RoleApplication[];
+  communitiesCount: number;
+  postsCount: number;
   onToggleInterest: (sport: string) => void;
   onWorkspace: (w: Workspace) => void;
   onOpenTeams: () => void;
@@ -1090,22 +1159,22 @@ function Profile({
       <View style={s.profileCard}>
         <View style={s.profileTop}>
           <View style={s.profileAvatar}>
-            <Text style={s.profileAvatarText}>{name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}</Text>
+            <Text style={s.profileAvatarText}>{getInitials(name, 'PL')}</Text>
             <View style={s.profileVerified}><Text style={s.profileVerifiedText}>✓</Text></View>
           </View>
           <View style={s.profileIdentity}>
-            <Text style={s.profileName}>{name}</Text>
-            <Text style={s.profileEmail}>{email}</Text>
+            <Text style={s.profileName}>{name || 'Player'}</Text>
+            <Text style={s.profileEmail}>{email || ''}</Text>
             <View style={s.profileLocation}><Text style={s.profileLocationIcon}>📍</Text><Text style={s.profileLocationText}>{city ? ` ${city}, Sri Lanka` : ' Add your location'}</Text></View>
           </View>
           <Pressable style={s.editProfile} onPress={onEdit}><Text style={s.editProfileText}>Edit</Text></Pressable>
         </View>
         <View style={s.profileStats}>
-          <View><Text style={s.profileStatNum}>03</Text><Text style={s.profileStatLabel}>COMMUNITIES</Text></View>
+          <View><Text style={s.profileStatNum}>{communitiesCount.toString().padStart(2, '0')}</Text><Text style={s.profileStatLabel}>COMMUNITIES</Text></View>
           <View style={s.profileStatDivider} />
           <View><Text style={s.profileStatNum}>{interests.length.toString().padStart(2, '0')}</Text><Text style={s.profileStatLabel}>SPORTS</Text></View>
           <View style={s.profileStatDivider} />
-          <View><Text style={s.profileStatNum}>12</Text><Text style={s.profileStatLabel}>POSTS</Text></View>
+          <View><Text style={s.profileStatNum}>{postsCount.toString().padStart(2, '0')}</Text><Text style={s.profileStatLabel}>POSTS</Text></View>
         </View>
       </View>
 
@@ -1243,8 +1312,8 @@ function ComposerModal({
             <Pressable onPress={onClose} style={s.closeButton}><Text>✕</Text></Pressable>
           </View>
           <View style={s.sheetAuthor}>
-            <View style={s.quickAvatar}><Text style={s.quickAvatarText}>{name[0]}</Text></View>
-            <View><Text style={s.sheetAuthorName}>{name}</Text><Text style={s.sheetAuthorSub}>Sharing with your sports community</Text></View>
+            <View style={s.quickAvatar}><Text style={s.quickAvatarText}>{(name || 'P')[0]}</Text></View>
+            <View><Text style={s.sheetAuthorName}>{name || 'SportLK Player'}</Text><Text style={s.sheetAuthorSub}>Sharing with your sports community</Text></View>
           </View>
           <TextInput
             style={s.composerInput}
@@ -1894,4 +1963,13 @@ const s = StyleSheet.create({
   confirmSendText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
   inputLabel: { marginTop: 10, marginBottom: 6, color: '#4B5563', fontSize: 9, letterSpacing: 0.8, fontWeight: '800' },
   textInput: { minHeight: 40, borderWidth: 1, borderColor: '#D1D5DB', borderRadius: 8, backgroundColor: '#FFF', paddingHorizontal: 12, color: '#111827', fontSize: 12 },
+  emptyFeedCard: { padding: 24, marginVertical: 14, alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: '#E5E7EB' },
+  emptyFeedIcon: { fontSize: 28, marginBottom: 8 },
+  emptyFeedTitle: { fontSize: 14, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  emptyFeedSub: { fontSize: 11, color: '#6B7280', textAlign: 'center', lineHeight: 16, marginBottom: 12 },
+  emptyFeedBtn: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#111827', borderRadius: 8 },
+  emptyFeedBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
+  emptyJoinedStrip: { paddingVertical: 8, paddingHorizontal: 12, backgroundColor: '#F9FAFB', borderRadius: 10, borderWidth: 1, borderColor: '#E5E7EB', marginRight: 10 },
+  emptyJoinedText: { fontSize: 10, color: '#6B7280' },
+  emptyJoinedLink: { fontSize: 10, color: '#059669', fontWeight: '700', marginTop: 2 },
 });
