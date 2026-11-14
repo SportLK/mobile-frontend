@@ -34,7 +34,7 @@ const FALLBACK_JOIN_REQUESTS: TeamInvitation[] = [];
 const FALLBACK_CHALLENGES: TeamChallenge[] = [];
 
 export default function TeamsScreen({ onBack }: TeamsScreenProps) {
-  const { accessToken, userName, userEmail } = useAuth();
+  const { accessToken, userName, userEmail, userCity, userId } = useAuth();
 
   // Navigation & Sub-views
   const [mainTab, setMainTab] = useState<'my_teams' | 'browse' | 'challenges'>('my_teams');
@@ -62,7 +62,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
   // Form fields: Team
   const [formTeamName, setFormTeamName] = useState('');
   const [formSportType, setFormSportType] = useState<SportType>('CRICKET');
-  const [formCity, setFormCity] = useState('Colombo');
+  const [formCity, setFormCity] = useState(userCity || 'Colombo');
   const [formBio, setFormBio] = useState('');
 
   // Form fields: Member & Role
@@ -79,11 +79,17 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
   // Load teams & related records
   const loadData = useCallback(async () => {
     try {
-      const data = await teamService.getTeams({
-        sportType: selectedSport === 'All' ? undefined : selectedSport.toUpperCase(),
-        search: search.trim() || undefined,
-      });
+      const [data, openChallenges] = await Promise.all([
+        teamService.getTeams({
+          sportType: selectedSport === 'All' ? undefined : selectedSport.toUpperCase(),
+          search: search.trim() || undefined,
+        }).catch(() => []),
+        teamService.getOpenChallenges().catch(() => []),
+      ]);
       setTeams(Array.isArray(data) ? data : []);
+      if (Array.isArray(openChallenges) && openChallenges.length > 0) {
+        setChallenges(openChallenges);
+      }
     } catch {
       // Kept fallback teams
     }
@@ -102,10 +108,35 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
   // Helper: check if logged-in user manages this team
   const isManagerOfTeam = (team: Team) => {
     return (
+      (Boolean(userId) && (team.managerId === userId || team.manager?.id === userId)) ||
       team.managerId === userName ||
       team.manager?.displayName === userName ||
-      team.manager?.email === userEmail
+      (Boolean(userEmail) && team.manager?.email === userEmail)
     );
+  };
+
+  const openTeamProfile = async (team: Team) => {
+    setSelectedTeam(team);
+    setTeamProfileTab('roster');
+    if (accessToken && !team.id.startsWith('team-local-')) {
+      try {
+        const fullTeam = await teamService.getTeamById(team.id);
+        if (fullTeam) {
+          setSelectedTeam(fullTeam);
+          setTeams((prev) => prev.map((t) => (t.id === fullTeam.id ? fullTeam : t)));
+        }
+        if (isManagerOfTeam(team)) {
+          const [invs, reqs] = await Promise.all([
+            teamService.getTeamInvitations(team.id, accessToken).catch(() => []),
+            teamService.getJoinRequests(team.id, accessToken).catch(() => []),
+          ]);
+          setInvitations(invs || []);
+          setJoinRequests(reqs || []);
+        }
+      } catch {
+        // Fallback
+      }
+    }
   };
 
   // ── 1. Create Team ─────────────────────────────────────────────────────────
@@ -115,18 +146,19 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
       return;
     }
 
+    const managerIdToUse = userId || userName;
     const newTeam: Team = {
       id: `team-local-${Date.now()}`,
-      managerId: userName,
+      managerId: managerIdToUse,
       teamName: formTeamName.trim(),
       sportType: formSportType,
-      primaryLocationCity: formCity.trim() || 'Colombo',
+      primaryLocationCity: formCity.trim() || userCity || 'Colombo',
       teamBio: formBio.trim(),
       status: 'ACTIVE',
       createdAt: new Date().toISOString().split('T')[0],
       playersCount: 1,
       manager: {
-        id: userName,
+        id: managerIdToUse,
         displayName: userName,
         email: userEmail,
       },
@@ -134,11 +166,11 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
         {
           id: `m-${Date.now()}`,
           teamId: `team-local-${Date.now()}`,
-          userId: userName,
+          userId: managerIdToUse,
           memberRole: 'CAPTAIN',
           jerseyNumber: 1,
           joinedAt: new Date().toISOString().split('T')[0],
-          user: { id: userName, displayName: userName, email: userEmail },
+          user: { id: managerIdToUse, displayName: userName, email: userEmail },
         },
       ],
     };
@@ -147,7 +179,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
       if (accessToken) {
         const created = await teamService.createTeam(
           {
-            managerId: userName,
+            managerId: managerIdToUse,
             teamName: newTeam.teamName,
             sportType: newTeam.sportType,
             primaryLocationCity: newTeam.primaryLocationCity || undefined,
@@ -155,13 +187,17 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
           },
           accessToken,
         );
-        if (created?.id) newTeam.id = created.id;
+        if (created?.id) {
+          newTeam.id = created.id;
+          newTeam.managerId = created.managerId || managerIdToUse;
+        }
       }
+      await loadData();
     } catch {
       // Fallback local creation
     }
 
-    setTeams((prev) => [newTeam, ...prev]);
+    setTeams((prev) => [newTeam, ...prev.filter((t) => t.id !== newTeam.id)]);
     setCreateTeamModal(false);
     setFormTeamName('');
     setFormBio('');
@@ -616,10 +652,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
                   <View style={s.teamCardActions}>
                     <TouchableOpacity
                       style={s.outlineActionBtn}
-                      onPress={() => {
-                        setSelectedTeam(team);
-                        setTeamProfileTab('roster');
-                      }}
+                      onPress={() => openTeamProfile(team)}
                     >
                       <Text style={s.outlineActionText}>View Full Profile & Roster →</Text>
                     </TouchableOpacity>
@@ -673,10 +706,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
                 <View style={s.teamCardActions}>
                   <TouchableOpacity
                     style={s.outlineActionBtn}
-                    onPress={() => {
-                      setSelectedTeam(team);
-                      setTeamProfileTab('roster');
-                    }}
+                    onPress={() => openTeamProfile(team)}
                   >
                     <Text style={s.outlineActionText}>View Team Profile</Text>
                   </TouchableOpacity>
