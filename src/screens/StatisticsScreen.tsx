@@ -17,75 +17,49 @@ import {
   PlayerLeaderboardItem,
 } from '../types/statistics.types';
 import { statisticsService } from '../services/statisticsService';
+import { teamService } from '../services/teamService';
 
 type StatsTab = 'venues' | 'sports' | 'teams' | 'players';
 
-const SAMPLE_OVERVIEW: PlatformOverviewStats = {
+const INITIAL_OVERVIEW: PlatformOverviewStats = {
   matches: {
-    total: 148,
+    total: 0,
     byStatus: {
-      SCHEDULED: 28,
-      LIVE: 4,
-      COMPLETED: 116,
+      SCHEDULED: 0,
+      LIVE: 0,
+      COMPLETED: 0,
     },
   },
   venues: {
-    total: 32,
-    active: 28,
+    total: 0,
+    active: 0,
   },
   teams: {
-    activeTotal: 46,
+    activeTotal: 0,
   },
   tournaments: {
-    total: 12,
+    total: 0,
   },
 };
-
-const SAMPLE_TOP_VENUES: TopVenueItem[] = [
-  { id: '1', venueName: 'Colombo Racecourse Grounds', city: 'Colombo 07', district: 'Colombo', matchesHosted: 42 },
-  { id: '2', venueName: 'CR & FC Indoor Sports Arena', city: 'Colombo 07', district: 'Colombo', matchesHosted: 36 },
-  { id: '3', venueName: 'Tyronne Fernando Stadium', city: 'Moratuwa', district: 'Colombo', matchesHosted: 24 },
-  { id: '4', venueName: 'Otters Athletic Club Badminton Arena', city: 'Colombo 07', district: 'Colombo', matchesHosted: 19 },
-  { id: '5', venueName: 'De Soysa Stadium Grounds', city: 'Moratuwa', district: 'Colombo', matchesHosted: 15 },
-];
-
-const SAMPLE_SPORTS_BREAKDOWN: SportBreakdownItem[] = [
-  { sportType: 'CRICKET', totalMatches: 68, completedMatches: 54, liveMatches: 2 },
-  { sportType: 'FUTSAL', totalMatches: 44, completedMatches: 36, liveMatches: 2 },
-  { sportType: 'BADMINTON', totalMatches: 24, completedMatches: 18, liveMatches: 0 },
-  { sportType: 'BASKETBALL', totalMatches: 12, completedMatches: 8, liveMatches: 0 },
-];
-
-const SAMPLE_TEAMS: TeamLeaderboardItem[] = [
-  { id: '1', teamName: 'Colombo Lions CC', shortName: 'COL', sportType: 'CRICKET', matchesPlayed: 14, wins: 12, losses: 2, winRate: 85.7, form: ['W', 'W', 'W', 'L', 'W'] },
-  { id: '2', teamName: 'CR&FC Strikers', shortName: 'CRFC', sportType: 'FUTSAL', matchesPlayed: 12, wins: 10, losses: 2, winRate: 83.3, form: ['W', 'W', 'W', 'W', 'L'] },
-  { id: '3', teamName: 'Moratuwa Smashers', shortName: 'MOR', sportType: 'BADMINTON', matchesPlayed: 10, wins: 8, losses: 2, winRate: 80.0, form: ['W', 'L', 'W', 'W', 'W'] },
-  { id: '4', teamName: 'Kandy Kings CC', shortName: 'KAN', sportType: 'CRICKET', matchesPlayed: 15, wins: 11, losses: 4, winRate: 73.3, form: ['W', 'L', 'W', 'W', 'L'] },
-  { id: '5', teamName: 'Java Lane FC', shortName: 'JLFC', sportType: 'FUTSAL', matchesPlayed: 11, wins: 7, losses: 4, winRate: 63.6, form: ['L', 'W', 'L', 'W', 'W'] },
-];
-
-const SAMPLE_PLAYERS: PlayerLeaderboardItem[] = [
-  { id: '1', playerName: 'Kusal Mendis', teamName: 'Colombo Lions CC', sport: 'CRICKET', category: 'Top Run Scorer', primaryStat: '482 Runs', secondaryStat: 'Avg 60.25 • SR 158.4' },
-  { id: '2', playerName: 'Mohamed Aaqil', teamName: 'CR&FC Strikers', sport: 'FUTSAL', category: 'Golden Boot', primaryStat: '18 Goals', secondaryStat: '9 Matches • 2.0 G/M' },
-  { id: '3', playerName: 'Wanindu Hasaranga', teamName: 'Kandy Kings CC', sport: 'CRICKET', category: 'Leading Wicket-Taker', primaryStat: '22 Wickets', secondaryStat: 'Econ 6.12 • 4/18 Best' },
-  { id: '4', playerName: 'Dinuka Karunaratne', teamName: 'Moratuwa Smashers', sport: 'BADMINTON', category: 'Most Matches Won', primaryStat: '14 Wins', secondaryStat: 'Singles & Doubles' },
-];
 
 export const StatisticsScreen: React.FC = () => {
   const [activeTab, setActiveTab] = useState<StatsTab>('venues');
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [overview, setOverview] = useState<PlatformOverviewStats>(SAMPLE_OVERVIEW);
-  const [topVenues, setTopVenues] = useState<TopVenueItem[]>(SAMPLE_TOP_VENUES);
-  const [sportsBreakdown, setSportsBreakdown] = useState<SportBreakdownItem[]>(SAMPLE_SPORTS_BREAKDOWN);
+  const [overview, setOverview] = useState<PlatformOverviewStats>(INITIAL_OVERVIEW);
+  const [topVenues, setTopVenues] = useState<TopVenueItem[]>([]);
+  const [sportsBreakdown, setSportsBreakdown] = useState<SportBreakdownItem[]>([]);
+  const [teams, setTeams] = useState<TeamLeaderboardItem[]>([]);
+  const [players, setPlayers] = useState<PlayerLeaderboardItem[]>([]);
 
   const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
-      const [ovData, matchData, venueData] = await Promise.allSettled([
+      const [ovData, matchData, venueData, teamData] = await Promise.allSettled([
         statisticsService.getOverview(),
         statisticsService.getMatchStatistics(),
         statisticsService.getVenueStatistics(),
+        teamService.getTeams(),
       ]);
 
       if (ovData.status === 'fulfilled' && ovData.value) {
@@ -97,8 +71,22 @@ export const StatisticsScreen: React.FC = () => {
       if (venueData.status === 'fulfilled' && venueData.value?.topVenues) {
         setTopVenues(venueData.value.topVenues);
       }
+      if (teamData.status === 'fulfilled' && Array.isArray(teamData.value)) {
+        const liveTeams: TeamLeaderboardItem[] = teamData.value.map((t: any, idx: number) => ({
+          id: t.id || `team-${idx}`,
+          teamName: t.teamName || 'Sports Team',
+          shortName: (t.teamName || 'TM').split(' ').map((p: string) => p[0]).slice(0, 3).join('').toUpperCase(),
+          sportType: t.sportType || 'CRICKET',
+          matchesPlayed: t.matchesPlayed ?? 0,
+          wins: t.wins ?? 0,
+          losses: t.losses ?? 0,
+          winRate: t.winRate ?? (t.matchesPlayed ? Math.round(((t.wins ?? 0) / t.matchesPlayed) * 100) : 0),
+          form: Array.isArray(t.form) ? t.form : [],
+        }));
+        setTeams(liveTeams);
+      }
     } catch (err) {
-      console.warn('Failed to fetch statistics, using fallback:', err);
+      console.warn('Failed to fetch statistics:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -138,7 +126,7 @@ export const StatisticsScreen: React.FC = () => {
             <View style={[styles.kpiIconBox, { backgroundColor: Colors.primaryLight }]}>
               <Text style={styles.kpiIcon}>🏟️</Text>
             </View>
-            <Text style={styles.kpiValue}>{overview.venues?.active || 28}</Text>
+            <Text style={styles.kpiValue}>{overview.venues?.active ?? 0}</Text>
             <Text style={styles.kpiLabel}>Active Grounds</Text>
           </View>
 
@@ -147,7 +135,7 @@ export const StatisticsScreen: React.FC = () => {
             <View style={[styles.kpiIconBox, { backgroundColor: '#EFF6FF' }]}>
               <Text style={styles.kpiIcon}>🏆</Text>
             </View>
-            <Text style={styles.kpiValue}>{overview.matches?.total || 148}</Text>
+            <Text style={styles.kpiValue}>{overview.matches?.total ?? 0}</Text>
             <Text style={styles.kpiLabel}>Total Fixtures</Text>
           </View>
 
@@ -157,7 +145,7 @@ export const StatisticsScreen: React.FC = () => {
               <Text style={styles.kpiIcon}>🔴</Text>
             </View>
             <Text style={[styles.kpiValue, { color: Colors.liveRed }]}>
-              {overview.matches?.byStatus?.LIVE || 4}
+              {overview.matches?.byStatus?.LIVE ?? 0}
             </Text>
             <Text style={styles.kpiLabel}>Live Right Now</Text>
           </View>
@@ -167,7 +155,7 @@ export const StatisticsScreen: React.FC = () => {
             <View style={[styles.kpiIconBox, { backgroundColor: '#F3E8FF' }]}>
               <Text style={styles.kpiIcon}>👥</Text>
             </View>
-            <Text style={styles.kpiValue}>{overview.teams?.activeTotal || 46}</Text>
+            <Text style={styles.kpiValue}>{overview.teams?.activeTotal ?? 0}</Text>
             <Text style={styles.kpiLabel}>Registered Teams</Text>
           </View>
         </View>
@@ -219,21 +207,29 @@ export const StatisticsScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>Most Utilized Grassroots Grounds</Text>
             <Text style={styles.sectionSubtitle}>Ranked by official tournament matches hosted</Text>
 
-            {topVenues.map((v, idx) => (
-              <View key={v.id || idx} style={styles.venueRankCard}>
-                <View style={styles.rankBadge}>
-                  <Text style={styles.rankBadgeText}>#{idx + 1}</Text>
-                </View>
-                <View style={styles.venueRankInfo}>
-                  <Text style={styles.venueRankName} numberOfLines={1}>{v.venueName}</Text>
-                  <Text style={styles.venueRankCity}>📍 {v.city || 'Colombo'}</Text>
-                </View>
-                <View style={styles.matchesHostedBadge}>
-                  <Text style={styles.matchesHostedNum}>{v.matchesHosted}</Text>
-                  <Text style={styles.matchesHostedLabel}>matches</Text>
-                </View>
+            {topVenues.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyEmoji}>🏟️</Text>
+                <Text style={styles.emptyTitle}>No Grounds Data Yet</Text>
+                <Text style={styles.emptySubtitle}>Venues will be ranked here based on hosted tournament matches.</Text>
               </View>
-            ))}
+            ) : (
+              topVenues.map((v, idx) => (
+                <View key={v.id || idx} style={styles.venueRankCard}>
+                  <View style={styles.rankBadge}>
+                    <Text style={styles.rankBadgeText}>#{idx + 1}</Text>
+                  </View>
+                  <View style={styles.venueRankInfo}>
+                    <Text style={styles.venueRankName} numberOfLines={1}>{v.venueName}</Text>
+                    <Text style={styles.venueRankCity}>📍 {v.city || 'Colombo'}</Text>
+                  </View>
+                  <View style={styles.matchesHostedBadge}>
+                    <Text style={styles.matchesHostedNum}>{v.matchesHosted}</Text>
+                    <Text style={styles.matchesHostedLabel}>matches</Text>
+                  </View>
+                </View>
+              ))
+            )}
           </View>
         )}
 
@@ -243,35 +239,43 @@ export const StatisticsScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>Sport Participation Breakdown</Text>
             <Text style={styles.sectionSubtitle}>Distribution of competitive fixtures across sports</Text>
 
-            {sportsBreakdown.map((s, idx) => {
-              const maxMatches = 80;
-              const percent = Math.min(100, Math.round((s.totalMatches / maxMatches) * 100));
-              const formatEmoji = (type: string) => {
-                if (type.includes('CRICKET')) return '🏏';
-                if (type.includes('FUTSAL')) return '⚽';
-                if (type.includes('BADMINTON')) return '🏸';
-                return '🏀';
-              };
-              return (
-                <View key={idx} style={styles.sportMetricCard}>
-                  <View style={styles.sportCardHeader}>
-                    <Text style={styles.sportCardTitle}>
-                      {formatEmoji(s.sportType)} {s.sportType}
-                    </Text>
-                    <Text style={styles.sportCardCount}>
-                      {s.totalMatches} matches ({s.liveMatches} LIVE)
-                    </Text>
+            {sportsBreakdown.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyEmoji}>📊</Text>
+                <Text style={styles.emptyTitle}>No Sport Activity Recorded</Text>
+                <Text style={styles.emptySubtitle}>Fixtures and match distributions will display here as matches are scheduled.</Text>
+              </View>
+            ) : (
+              sportsBreakdown.map((s, idx) => {
+                const maxMatches = Math.max(...sportsBreakdown.map((item) => item.totalMatches), 1);
+                const percent = Math.min(100, Math.round((s.totalMatches / maxMatches) * 100));
+                const formatEmoji = (type: string) => {
+                  if (type.includes('CRICKET')) return '🏏';
+                  if (type.includes('FUTSAL') || type.includes('FOOTBALL')) return '⚽';
+                  if (type.includes('BADMINTON')) return '🏸';
+                  return '🏀';
+                };
+                return (
+                  <View key={idx} style={styles.sportMetricCard}>
+                    <View style={styles.sportCardHeader}>
+                      <Text style={styles.sportCardTitle}>
+                        {formatEmoji(s.sportType)} {s.sportType}
+                      </Text>
+                      <Text style={styles.sportCardCount}>
+                        {s.totalMatches} matches ({s.liveMatches} LIVE)
+                      </Text>
+                    </View>
+                    <View style={styles.progressBarTrack}>
+                      <View style={[styles.progressBarFill, { width: `${percent}%` }]} />
+                    </View>
+                    <View style={styles.sportCardFooter}>
+                      <Text style={styles.sportCardDetail}>Completed: {s.completedMatches}</Text>
+                      <Text style={styles.sportCardDetail}>Completion: {Math.round((s.completedMatches / (s.totalMatches || 1)) * 100)}%</Text>
+                    </View>
                   </View>
-                  <View style={styles.progressBarTrack}>
-                    <View style={[styles.progressBarFill, { width: `${percent}%` }]} />
-                  </View>
-                  <View style={styles.sportCardFooter}>
-                    <Text style={styles.sportCardDetail}>Completed: {s.completedMatches}</Text>
-                    <Text style={styles.sportCardDetail}>Completion: {Math.round((s.completedMatches / s.totalMatches) * 100 || 0)}%</Text>
-                  </View>
-                </View>
-              );
-            })}
+                );
+              })
+            )}
           </View>
         )}
 
@@ -279,39 +283,51 @@ export const StatisticsScreen: React.FC = () => {
         {activeTab === 'teams' && (
           <View style={styles.tabSection}>
             <Text style={styles.sectionTitle}>Grassroots Team Standings</Text>
-            <Text style={styles.sectionSubtitle}>Ranked by tournament win rate percentage</Text>
+            <Text style={styles.sectionSubtitle}>Ranked by registered squad records and win rate</Text>
 
-            {SAMPLE_TEAMS.map((team, idx) => (
-              <View key={team.id} style={styles.teamLeaderCard}>
-                <View style={styles.teamRankNum}>
-                  <Text style={styles.rankNumText}>#{idx + 1}</Text>
-                </View>
-                <View style={[styles.teamInitialsCircle, { backgroundColor: Colors.primary }]}>
-                  <Text style={styles.teamInitialsText}>{team.shortName}</Text>
-                </View>
-                <View style={styles.teamInfoCol}>
-                  <Text style={styles.teamLeaderName} numberOfLines={1}>{team.teamName}</Text>
-                  <View style={styles.formBadgeRow}>
-                    <Text style={styles.teamFormLabel}>Form: </Text>
-                    {team.form.map((f, i) => (
-                      <View
-                        key={i}
-                        style={[
-                          styles.formDot,
-                          { backgroundColor: f === 'W' ? Colors.fourGreen : Colors.wicketRed },
-                        ]}
-                      >
-                        <Text style={styles.formDotText}>{f}</Text>
-                      </View>
-                    ))}
+            {teams.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyEmoji}>👥</Text>
+                <Text style={styles.emptyTitle}>No Registered Teams Found</Text>
+                <Text style={styles.emptySubtitle}>Teams registered in the Teams & Squads manager will appear here.</Text>
+              </View>
+            ) : (
+              teams.map((team, idx) => (
+                <View key={team.id} style={styles.teamLeaderCard}>
+                  <View style={styles.teamRankNum}>
+                    <Text style={styles.rankNumText}>#{idx + 1}</Text>
+                  </View>
+                  <View style={[styles.teamInitialsCircle, { backgroundColor: Colors.primary }]}>
+                    <Text style={styles.teamInitialsText}>{team.shortName}</Text>
+                  </View>
+                  <View style={styles.teamInfoCol}>
+                    <Text style={styles.teamLeaderName} numberOfLines={1}>{team.teamName}</Text>
+                    <View style={styles.formBadgeRow}>
+                      <Text style={styles.teamFormLabel}>{team.sportType} · </Text>
+                      {team.form && team.form.length > 0 ? (
+                        team.form.map((f, i) => (
+                          <View
+                            key={i}
+                            style={[
+                              styles.formDot,
+                              { backgroundColor: f === 'W' ? Colors.fourGreen : Colors.wicketRed },
+                            ]}
+                          >
+                            <Text style={styles.formDotText}>{f}</Text>
+                          </View>
+                        ))
+                      ) : (
+                        <Text style={[styles.teamFormLabel, { fontStyle: 'italic' }]}>Active squad</Text>
+                      )}
+                    </View>
+                  </View>
+                  <View style={styles.winRateCol}>
+                    <Text style={styles.winRateNum}>{team.winRate}%</Text>
+                    <Text style={styles.winRateLabel}>{team.wins}W - {team.losses}L</Text>
                   </View>
                 </View>
-                <View style={styles.winRateCol}>
-                  <Text style={styles.winRateNum}>{team.winRate}%</Text>
-                  <Text style={styles.winRateLabel}>{team.wins}W - {team.losses}L</Text>
-                </View>
-              </View>
-            ))}
+              ))
+            )}
           </View>
         )}
 
@@ -321,26 +337,34 @@ export const StatisticsScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>Top Performers of the Season</Text>
             <Text style={styles.sectionSubtitle}>Outstanding grassroots athlete stats</Text>
 
-            {SAMPLE_PLAYERS.map((p) => (
-              <View key={p.id} style={styles.playerCard}>
-                <View style={styles.playerTopRow}>
-                  <View style={styles.playerAvatarBadge}>
-                    <Text style={styles.playerAvatarEmoji}>
-                      {p.sport === 'CRICKET' ? '🏏' : p.sport === 'FUTSAL' ? '⚽' : '🏸'}
-                    </Text>
-                  </View>
-                  <View style={styles.playerMetaCol}>
-                    <Text style={styles.playerCategoryPill}>{p.category}</Text>
-                    <Text style={styles.playerNameText}>{p.playerName}</Text>
-                    <Text style={styles.playerTeamSub}>{p.teamName}</Text>
-                  </View>
-                  <View style={styles.playerStatBadge}>
-                    <Text style={styles.playerPrimaryStat}>{p.primaryStat}</Text>
-                    <Text style={styles.playerSecondaryStat}>{p.secondaryStat}</Text>
+            {players.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyEmoji}>⭐</Text>
+                <Text style={styles.emptyTitle}>No Player Statistics Recorded</Text>
+                <Text style={styles.emptySubtitle}>Top grassroots scorers, MVP candidates, and match performers will appear here as tournament fixtures conclude.</Text>
+              </View>
+            ) : (
+              players.map((p) => (
+                <View key={p.id} style={styles.playerCard}>
+                  <View style={styles.playerTopRow}>
+                    <View style={styles.playerAvatarBadge}>
+                      <Text style={styles.playerAvatarEmoji}>
+                        {p.sport === 'CRICKET' ? '🏏' : p.sport === 'FUTSAL' ? '⚽' : '🏸'}
+                      </Text>
+                    </View>
+                    <View style={styles.playerMetaCol}>
+                      <Text style={styles.playerCategoryPill}>{p.category}</Text>
+                      <Text style={styles.playerNameText}>{p.playerName}</Text>
+                      <Text style={styles.playerTeamSub}>{p.teamName}</Text>
+                    </View>
+                    <View style={styles.playerStatBadge}>
+                      <Text style={styles.playerPrimaryStat}>{p.primaryStat}</Text>
+                      <Text style={styles.playerSecondaryStat}>{p.secondaryStat}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))}
+              ))
+            )}
           </View>
         )}
 
@@ -698,5 +722,28 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: Colors.textMuted,
     marginTop: 2,
+  },
+  emptyContainer: {
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+  },
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: Colors.textPrimary,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
