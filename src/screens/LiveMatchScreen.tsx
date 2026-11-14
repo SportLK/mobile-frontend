@@ -6,11 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
-  FlatList,
-  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Colors } from '../theme/colors';
-import { Match, TimelineEvent, PlayerScoreItem } from '../types/match.types';
+import { Match, TimelineEvent } from '../types/match.types';
 import { socketService } from '../services/socketService';
 import { matchService } from '../services/matchService';
 
@@ -19,175 +18,9 @@ interface LiveMatchScreenProps {
   onBack?: () => void;
 }
 
-// Fallback high-fidelity sample matches for grassroots sports
-const INITIAL_CRICKET_MATCH: Match = {
-  id: 'cricket-demo-1',
-  sportType: 'CRICKET',
-  matchStatus: 'LIVE',
-  tournament: {
-    id: 't-101',
-    tournamentName: 'Western Province T20 League 2026',
-  },
-  homeTeamId: 'team-1',
-  homeTeam: {
-    id: 'team-1',
-    teamName: 'Colombo Lions CC',
-    shortName: 'COL',
-  },
-  awayTeamId: 'team-2',
-  awayTeam: {
-    id: 'team-2',
-    teamName: 'Kandy Kings CC',
-    shortName: 'KAN',
-  },
-  venue: {
-    id: 'venue-1',
-    venueName: 'Colombo Racecourse Grounds',
-    city: 'Colombo 07',
-  },
-  scheduledStartTime: new Date().toISOString(),
-  score: {
-    homeTeamScoreDisplay: '146/3',
-    awayTeamScoreDisplay: '158/7',
-    detailedScorecardJson: {
-      currentInningsOrHalf: '2nd Innings',
-      overs: '17.2',
-      currentStatus: 'Colombo Lions need 13 runs from 16 balls to win',
-      stats: {
-        runRate: '8.42',
-        reqRate: '4.88',
-      },
-      batsmen: [
-        { name: 'Kusal Mendis', runsOrPoints: 58, ballsOrShots: 38, fours: 6, sixes: 2, strikeRate: '152.6', isStriker: true },
-        { name: 'Dasun Shanaka', runsOrPoints: 26, ballsOrShots: 16, fours: 2, sixes: 1, strikeRate: '162.5', isStriker: false },
-      ],
-      bowler: {
-        name: 'Wanindu Hasaranga',
-        overs: '3.2',
-        maidens: 0,
-        runs: 24,
-        wickets: 2,
-      },
-      timeline: [
-        {
-          id: 'b-1',
-          ballOrMinute: '17.2',
-          type: 'FOUR',
-          badgeText: '4',
-          description: 'FOUR! Smacked through extra cover! Beautiful lofted drive by Kusal Mendis finds the boundary rope.',
-          timeAgo: 'Just now',
-        },
-        {
-          id: 'b-2',
-          ballOrMinute: '17.1',
-          type: 'RUN',
-          badgeText: '1',
-          description: 'Single taken towards long-on. Shanaka pushes it softly into the gap and rotates the strike.',
-          timeAgo: '1m ago',
-        },
-        {
-          id: 'b-3',
-          ballOrMinute: '16.6',
-          type: 'SIX',
-          badgeText: '6',
-          description: 'SIX! Maximum! In the slot and launched high over deep mid-wicket into the grandstand!',
-          timeAgo: '2m ago',
-        },
-        {
-          id: 'b-4',
-          ballOrMinute: '16.5',
-          type: 'DOT',
-          badgeText: '0',
-          description: 'Beaten by the wrong-un! Spinning past the outside edge as Mendis looks to cut.',
-          timeAgo: '3m ago',
-        },
-        {
-          id: 'b-5',
-          ballOrMinute: '16.4',
-          type: 'WICKET',
-          badgeText: 'W',
-          description: 'WICKET! Clean bowled! The googly clips the top of off-stump! Huge breakthrough for Kandy Kings.',
-          timeAgo: '4m ago',
-        },
-        {
-          id: 'b-6',
-          ballOrMinute: '16.3',
-          type: 'FOUR',
-          badgeText: '4',
-          description: 'FOUR! Sliced over backward point. The fielder at third man cannot cut it off.',
-          timeAgo: '5m ago',
-        },
-      ],
-    },
-  },
-};
-
-const INITIAL_FUTSAL_MATCH: Match = {
-  id: 'futsal-demo-2',
-  sportType: 'FUTSAL',
-  matchStatus: 'LIVE',
-  tournament: {
-    id: 't-102',
-    tournamentName: 'Colombo Futsal Championship 2026',
-  },
-  homeTeamId: 'team-3',
-  homeTeam: {
-    id: 'team-3',
-    teamName: 'CR&FC Strikers',
-    shortName: 'CRFC',
-  },
-  awayTeamId: 'team-4',
-  awayTeam: {
-    id: 'team-4',
-    teamName: 'Java Lane FC',
-    shortName: 'JLFC',
-  },
-  venue: {
-    id: 'venue-2',
-    venueName: 'CR & FC Indoor Sports Arena',
-    city: 'Colombo 07',
-  },
-  scheduledStartTime: new Date().toISOString(),
-  score: {
-    homeTeamScoreDisplay: '3',
-    awayTeamScoreDisplay: '2',
-    detailedScorecardJson: {
-      currentInningsOrHalf: '2nd Half',
-      clock: '34:18',
-      currentStatus: 'CR&FC leading by 1 goal • 5 minutes remaining',
-      stats: {
-        possession: '54% - 46%',
-        shots: '12 - 9',
-      },
-      batsmen: [
-        { name: 'Mohamed Aaqil (CRFC)', runsOrPoints: 2, ballsOrShots: 5 },
-        { name: 'R. Perera (JLFC)', runsOrPoints: 2, ballsOrShots: 4 },
-      ],
-      timeline: [
-        {
-          id: 'f-1',
-          ballOrMinute: '33\'',
-          type: 'GOAL',
-          badgeText: '⚽',
-          description: 'GOAL! Sensational counter-attack! Aaqil finishes into the bottom-right corner!',
-          timeAgo: '1m ago',
-        },
-        {
-          id: 'f-2',
-          ballOrMinute: '28\'',
-          type: 'GOAL',
-          badgeText: '⚽',
-          description: 'GOAL for Java Lane! Powerful volley from outside the penalty box levels the score.',
-          timeAgo: '6m ago',
-        },
-      ],
-    },
-  },
-};
-
 export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBack }) => {
-  const [selectedSport, setSelectedSport] = useState<'CRICKET' | 'FUTSAL'>('CRICKET');
-  const [match, setMatch] = useState<Match>(INITIAL_CRICKET_MATCH);
+  const [match, setMatch] = useState<Match | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'feed' | 'scorecard' | 'info'>('feed');
   const [isLiveConnected, setIsLiveConnected] = useState<boolean>(false);
 
@@ -207,129 +40,85 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
           duration: 800,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
   }, [pulseAnim]);
 
-  // Connect to WebSocket Gateway
+  // Load actual match from backend API
   useEffect(() => {
-    const idToUse = matchId || match.id;
+    let isMounted = true;
+    async function loadMatch() {
+      try {
+        setLoading(true);
+        if (matchId) {
+          const m = await matchService.getMatchById(matchId);
+          if (isMounted) setMatch(m);
+        } else {
+          const live = await matchService.getLiveMatches().catch(() => []);
+          if (isMounted && Array.isArray(live) && live.length > 0) {
+            setMatch(live[0]);
+          } else {
+            const all = await matchService.getMatches('ALL').catch(() => []);
+            if (isMounted && Array.isArray(all) && all.length > 0) {
+              setMatch(all[0]);
+            } else {
+              setMatch(null);
+            }
+          }
+        }
+      } catch {
+        if (isMounted) setMatch(null);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    loadMatch();
+    return () => {
+      isMounted = false;
+    };
+  }, [matchId]);
+
+  // Connect to WebSocket Gateway when match is active
+  useEffect(() => {
+    if (!match?.id) return;
+    const idToUse = match.id;
     try {
       socketService.joinMatch(idToUse, (backendMatch) => {
         if (backendMatch) {
-          setMatch((prev) => ({ ...prev, ...backendMatch }));
+          setMatch((prev) => (prev ? { ...prev, ...backendMatch } : backendMatch));
           setIsLiveConnected(true);
         }
       });
 
       socketService.onScoreUpdated((payload) => {
         if (payload && payload.matchId === idToUse && payload.score) {
-          setMatch((prev) => ({
-            ...prev,
-            score: {
-              ...prev.score,
-              ...payload.score,
-            },
-          }));
+          setMatch((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              score: {
+                ...prev.score,
+                ...payload.score,
+              },
+            };
+          });
           setIsLiveConnected(true);
         }
       });
 
       socketService.onStatusChanged((payload) => {
         if (payload && payload.matchId === idToUse && payload.match) {
-          setMatch((prev) => ({ ...prev, matchStatus: payload.match.matchStatus }));
+          setMatch((prev) => (prev ? { ...prev, matchStatus: payload.match.matchStatus } : prev));
         }
       });
     } catch (e) {
-      console.log('Running in local live match mode:', e);
+      console.log('Socket connection:', e);
     }
 
     return () => {
       socketService.leaveMatch(idToUse);
     };
-  }, [matchId, match.id]);
-
-  // Switch between demo sports
-  const handleSwitchSport = (sport: 'CRICKET' | 'FUTSAL') => {
-    setSelectedSport(sport);
-    setMatch(sport === 'CRICKET' ? INITIAL_CRICKET_MATCH : INITIAL_FUTSAL_MATCH);
-  };
-
-  // Interactive Live Ball Simulation (for demo & examiners)
-  const handleSimulateNextBall = () => {
-    if (match.sportType === 'CRICKET') {
-      const outcomes = [
-        { type: 'FOUR' as const, badge: '4', desc: 'FOUR! Pulled powerfully behind square leg to the boundary rope!', runs: 4, isWicket: false },
-        { type: 'SIX' as const, badge: '6', desc: 'SIX! Colossal strike! Clears the long-off boundary by miles!', runs: 6, isWicket: false },
-        { type: 'RUN' as const, badge: '1', desc: 'Single taken into the covers. Good call, quick running between wickets.', runs: 1, isWicket: false },
-        { type: 'DOT' as const, badge: '0', desc: 'Dot ball. Good length delivery defended back to the bowler.', runs: 0, isWicket: false },
-        { type: 'WICKET' as const, badge: 'W', desc: 'WICKET! Caught at deep mid-wicket! Tried to clear the fence but mistimed.', runs: 0, isWicket: true },
-      ];
-      const pick = outcomes[Math.floor(Math.random() * outcomes.length)];
-
-      const currentScoreStr = match.score?.homeTeamScoreDisplay || '146/3';
-      const [runsPart, wktsPart] = currentScoreStr.split('/');
-      const currentRuns = parseInt(runsPart || '146', 10);
-      const currentWkts = parseInt(wktsPart || '3', 10);
-
-      const newRuns = currentRuns + pick.runs;
-      const newWkts = pick.isWicket ? Math.min(10, currentWkts + 1) : currentWkts;
-      const newScoreStr = `${newRuns}/${newWkts}`;
-
-      const currentOvers = parseFloat(match.score?.detailedScorecardJson?.overs || '17.2');
-      const nextOver = (currentOvers + 0.1).toFixed(1);
-
-      const newEvent: TimelineEvent = {
-        id: `b-${Date.now()}`,
-        ballOrMinute: nextOver,
-        type: pick.type,
-        badgeText: pick.badge,
-        description: pick.desc,
-        timeAgo: 'Just now',
-      };
-
-      const updatedTimeline = [newEvent, ...(match.score?.detailedScorecardJson?.timeline || [])];
-
-      setMatch((prev) => ({
-        ...prev,
-        score: {
-          ...prev.score,
-          homeTeamScoreDisplay: newScoreStr,
-          awayTeamScoreDisplay: prev.score?.awayTeamScoreDisplay || '158/7',
-          detailedScorecardJson: {
-            ...prev.score?.detailedScorecardJson,
-            overs: nextOver,
-            currentStatus: `Colombo Lions: ${newScoreStr} (${nextOver} Ov) • Target 159`,
-            timeline: updatedTimeline,
-          },
-        },
-      }));
-    } else {
-      // Futsal simulation
-      const currentGoals = parseInt(match.score?.homeTeamScoreDisplay || '3', 10) + 1;
-      const newEvent: TimelineEvent = {
-        id: `f-${Date.now()}`,
-        ballOrMinute: '36\'',
-        type: 'GOAL',
-        badgeText: '⚽',
-        description: 'GOAL! Cracking low drive inside the left post! The crowd goes wild!',
-        timeAgo: 'Just now',
-      };
-      setMatch((prev) => ({
-        ...prev,
-        score: {
-          ...prev.score,
-          homeTeamScoreDisplay: currentGoals.toString(),
-          awayTeamScoreDisplay: prev.score?.awayTeamScoreDisplay || '2',
-          detailedScorecardJson: {
-            ...prev.score?.detailedScorecardJson,
-            timeline: [newEvent, ...(prev.score?.detailedScorecardJson?.timeline || [])],
-            currentStatus: `CR&FC: ${currentGoals} - JLFC: ${prev.score?.awayTeamScoreDisplay || '2'}`,
-          },
-        },
-      }));
-    }
-  };
+  }, [match?.id]);
 
   const getBadgeStyle = (type: string) => {
     switch (type) {
@@ -347,6 +136,58 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
     }
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ marginTop: 12, color: Colors.textSecondary, fontSize: 13 }}>Loading match...</Text>
+      </View>
+    );
+  }
+
+  if (!match) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          {onBack ? (
+            <TouchableOpacity style={styles.backButton} onPress={onBack}>
+              <Text style={styles.backButtonText}>‹</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.backPlaceholder} />
+          )}
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.tournamentName}>Live Matches</Text>
+          </View>
+          <View style={styles.backPlaceholder} />
+        </View>
+
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ fontSize: 44, marginBottom: 12 }}>🏏</Text>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8, textAlign: 'center' }}>
+            No Live Match In Progress
+          </Text>
+          <Text style={{ fontSize: 13, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+            There are currently no active live matches in progress. When a tournament match begins and scores are updated, live ball-by-ball updates will stream here automatically.
+          </Text>
+          {Boolean(onBack) && (
+            <TouchableOpacity
+              style={{ backgroundColor: Colors.primary, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 10 }}
+              onPress={onBack}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>Browse Scheduled Matches →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  const homeTeamName = match.homeTeam?.teamName || 'Home Team';
+  const homeTeamShort = match.homeTeam?.shortName || homeTeamName.slice(0, 3).toUpperCase();
+  const awayTeamName = match.awayTeam?.teamName || 'Away Team';
+  const awayTeamShort = match.awayTeam?.shortName || awayTeamName.slice(0, 3).toUpperCase();
+
   return (
     <View style={styles.container}>
       {/* Header Bar */}
@@ -361,44 +202,18 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
 
         <View style={styles.headerTitleContainer}>
           <Text style={styles.tournamentName} numberOfLines={1}>
-            {match.tournament?.tournamentName || 'SportLK Championship'}
+            {match.tournament?.tournamentName || 'SportLK Match'}
           </Text>
           <Text style={styles.venueSubtitle}>
-            {match.venue?.venueName}
+            {match.venue?.venueName || 'Grassroots Ground'}
           </Text>
         </View>
 
         {/* Pulsing LIVE Badge */}
         <View style={styles.liveBadgeWrapper}>
           <Animated.View style={[styles.liveDot, { opacity: pulseAnim }]} />
-          <Text style={styles.liveText}>LIVE</Text>
+          <Text style={styles.liveText}>{match.matchStatus || 'LIVE'}</Text>
         </View>
-      </View>
-
-      {/* Sport Toggle & Simulation Action Bar */}
-      <View style={styles.topActionBar}>
-        <View style={styles.sportChipContainer}>
-          <TouchableOpacity
-            style={[styles.sportChip, selectedSport === 'CRICKET' && styles.sportChipActive]}
-            onPress={() => handleSwitchSport('CRICKET')}
-          >
-            <Text style={[styles.sportChipText, selectedSport === 'CRICKET' && styles.sportChipTextActive]}>
-              🏏 Cricket
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.sportChip, selectedSport === 'FUTSAL' && styles.sportChipActive]}
-            onPress={() => handleSwitchSport('FUTSAL')}
-          >
-            <Text style={[styles.sportChipText, selectedSport === 'FUTSAL' && styles.sportChipTextActive]}>
-              ⚽ Futsal
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.simButton} onPress={handleSimulateNextBall}>
-          <Text style={styles.simButtonText}>⚡ Next Ball</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -407,13 +222,13 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
           <View style={styles.scoreboardTopRow}>
             <View style={styles.sportTag}>
               <Text style={styles.sportTagText}>
-                {match.sportType === 'CRICKET' ? '🏏 CRICKET' : '⚽ FUTSAL'} • {match.score?.detailedScorecardJson?.currentInningsOrHalf || 'LIVE'}
+                {match.sportType === 'CRICKET' ? '🏏 CRICKET' : '⚽ FUTSAL'} • {match.score?.detailedScorecardJson?.currentInningsOrHalf || match.matchStatus || 'LIVE'}
               </Text>
             </View>
             <Text style={styles.clockOrOversText}>
               {match.sportType === 'CRICKET'
                 ? `Over ${match.score?.detailedScorecardJson?.overs || '0.0'}`
-                : `${match.score?.detailedScorecardJson?.clock || '30:00'}`}
+                : `${match.score?.detailedScorecardJson?.clock || '00:00'}`}
             </Text>
           </View>
 
@@ -422,9 +237,9 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
             {/* Team A */}
             <View style={styles.teamCol}>
               <View style={[styles.teamAvatar, { backgroundColor: Colors.primary }]}>
-                <Text style={styles.teamAvatarText}>{match.homeTeam.shortName || 'COL'}</Text>
+                <Text style={styles.teamAvatarText}>{homeTeamShort}</Text>
               </View>
-              <Text style={styles.teamName} numberOfLines={1}>{match.homeTeam.teamName}</Text>
+              <Text style={styles.teamName} numberOfLines={1}>{homeTeamName}</Text>
               <Text style={styles.teamScore}>{match.score?.homeTeamScoreDisplay || '0'}</Text>
             </View>
 
@@ -436,9 +251,9 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
             {/* Team B */}
             <View style={styles.teamCol}>
               <View style={[styles.teamAvatar, { backgroundColor: '#3B82F6' }]}>
-                <Text style={styles.teamAvatarText}>{match.awayTeam.shortName || 'KAN'}</Text>
+                <Text style={styles.teamAvatarText}>{awayTeamShort}</Text>
               </View>
-              <Text style={styles.teamName} numberOfLines={1}>{match.awayTeam.teamName}</Text>
+              <Text style={styles.teamName} numberOfLines={1}>{awayTeamName}</Text>
               <Text style={styles.teamScore}>{match.score?.awayTeamScoreDisplay || '0'}</Text>
             </View>
           </View>
@@ -446,13 +261,13 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
           {/* Equation Status Bar */}
           <View style={styles.equationBar}>
             <Text style={styles.equationText}>
-              {match.score?.detailedScorecardJson?.currentStatus || 'Match in progress'}
+              {match.score?.detailedScorecardJson?.currentStatus || `${homeTeamName} vs ${awayTeamName}`}
             </Text>
           </View>
         </View>
 
         {/* Recent Balls Strip (Cricket) */}
-        {match.sportType === 'CRICKET' && (
+        {match.sportType === 'CRICKET' && (match.score?.detailedScorecardJson?.timeline?.length ?? 0) > 0 && (
           <View style={styles.recentBallsCard}>
             <Text style={styles.recentBallsTitle}>Recent:</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ballsRow}>
@@ -500,7 +315,7 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
         {activeTab === 'feed' && (
           <View style={styles.tabContent}>
             {/* Active Players Card */}
-            {match.score?.detailedScorecardJson?.batsmen && (
+            {match.score?.detailedScorecardJson?.batsmen && match.score.detailedScorecardJson.batsmen.length > 0 && (
               <View style={styles.activePlayersCard}>
                 <Text style={styles.sectionHeader}>ON CREASE</Text>
                 {match.score.detailedScorecardJson.batsmen.map((b, idx) => (
@@ -528,26 +343,32 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
 
             {/* Ball-by-Ball Commentary Stream */}
             <Text style={[styles.sectionHeader, { marginTop: 16 }]}>BALL-BY-BALL COMMENTARY</Text>
-            {(match.score?.detailedScorecardJson?.timeline || []).map((item) => {
-              const badge = getBadgeStyle(item.type);
-              return (
-                <View key={item.id} style={styles.commentaryItem}>
-                  <View style={styles.commentaryLeft}>
-                    <View style={[styles.eventBadge, { backgroundColor: badge.backgroundColor }]}>
-                      <Text style={[styles.eventBadgeText, { color: badge.textColor }]}>
-                        {item.badgeText}
-                      </Text>
+            {(!match.score?.detailedScorecardJson?.timeline || match.score.detailedScorecardJson.timeline.length === 0) ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <Text style={{ color: Colors.textSecondary, fontSize: 12 }}>No commentary updates yet for this match.</Text>
+              </View>
+            ) : (
+              (match.score?.detailedScorecardJson?.timeline || []).map((item) => {
+                const badge = getBadgeStyle(item.type);
+                return (
+                  <View key={item.id} style={styles.commentaryItem}>
+                    <View style={styles.commentaryLeft}>
+                      <View style={[styles.eventBadge, { backgroundColor: badge.backgroundColor }]}>
+                        <Text style={[styles.eventBadgeText, { color: badge.textColor }]}>
+                          {item.badgeText}
+                        </Text>
+                      </View>
+                      <Text style={styles.overTimestamp}>{item.ballOrMinute}</Text>
                     </View>
-                    <Text style={styles.overTimestamp}>{item.ballOrMinute}</Text>
-                  </View>
 
-                  <View style={styles.commentaryRight}>
-                    <Text style={styles.commentaryDesc}>{item.description}</Text>
-                    <Text style={styles.timeAgoText}>{item.timeAgo}</Text>
+                    <View style={styles.commentaryRight}>
+                      <Text style={styles.commentaryDesc}>{item.description}</Text>
+                      <Text style={styles.timeAgoText}>{item.timeAgo}</Text>
+                    </View>
                   </View>
-                </View>
-              );
-            })}
+                );
+              })
+            )}
           </View>
         )}
 
@@ -555,7 +376,7 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
         {activeTab === 'scorecard' && (
           <View style={styles.tabContent}>
             <View style={styles.scorecardTable}>
-              <Text style={styles.tableTitle}>{match.homeTeam.teamName} Innings</Text>
+              <Text style={styles.tableTitle}>{homeTeamName} Innings</Text>
               <View style={styles.tableHeaderRow}>
                 <Text style={[styles.thCell, { flex: 2 }]}>Batter</Text>
                 <Text style={styles.thCell}>R</Text>
@@ -565,21 +386,27 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
                 <Text style={styles.thCell}>SR</Text>
               </View>
 
-              {(match.score?.detailedScorecardJson?.batsmen || []).map((b, i) => (
-                <View key={i} style={styles.tableRow}>
-                  <Text style={[styles.tdCell, { flex: 2, fontWeight: '600' }]}>{b.name}</Text>
-                  <Text style={[styles.tdCell, { fontWeight: '700', color: Colors.primaryDark }]}>{b.runsOrPoints}</Text>
-                  <Text style={styles.tdCell}>{b.ballsOrShots || 0}</Text>
-                  <Text style={styles.tdCell}>{b.fours || 0}</Text>
-                  <Text style={styles.tdCell}>{b.sixes || 0}</Text>
-                  <Text style={styles.tdCell}>{b.strikeRate || '-'}</Text>
+              {(!match.score?.detailedScorecardJson?.batsmen || match.score.detailedScorecardJson.batsmen.length === 0) ? (
+                <View style={{ padding: 16, alignItems: 'center' }}>
+                  <Text style={{ color: Colors.textSecondary, fontSize: 11 }}>No batting records recorded yet.</Text>
                 </View>
-              ))}
+              ) : (
+                match.score.detailedScorecardJson.batsmen.map((b, i) => (
+                  <View key={i} style={styles.tableRow}>
+                    <Text style={[styles.tdCell, { flex: 2, fontWeight: '600' }]}>{b.name}</Text>
+                    <Text style={[styles.tdCell, { fontWeight: '700', color: Colors.primaryDark }]}>{b.runsOrPoints}</Text>
+                    <Text style={styles.tdCell}>{b.ballsOrShots || 0}</Text>
+                    <Text style={styles.tdCell}>{b.fours || 0}</Text>
+                    <Text style={styles.tdCell}>{b.sixes || 0}</Text>
+                    <Text style={styles.tdCell}>{b.strikeRate || '-'}</Text>
+                  </View>
+                ))
+              )}
             </View>
 
             {match.sportType === 'CRICKET' && match.score?.detailedScorecardJson?.bowler && (
               <View style={[styles.scorecardTable, { marginTop: 16 }]}>
-                <Text style={styles.tableTitle}>{match.awayTeam.teamName} Bowling</Text>
+                <Text style={styles.tableTitle}>{awayTeamName} Bowling</Text>
                 <View style={styles.tableHeaderRow}>
                   <Text style={[styles.thCell, { flex: 2 }]}>Bowler</Text>
                   <Text style={styles.thCell}>O</Text>
@@ -598,7 +425,9 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
                   <Text style={[styles.tdCell, { fontWeight: '700', color: Colors.wicketRed }]}>
                     {match.score.detailedScorecardJson.bowler.wickets}
                   </Text>
-                  <Text style={styles.tdCell}>7.20</Text>
+                  <Text style={styles.tdCell}>
+                    {match.score.detailedScorecardJson.bowler.overs ? (Number(match.score.detailedScorecardJson.bowler.runs) / Math.max(1, parseFloat(match.score.detailedScorecardJson.bowler.overs))).toFixed(2) : '-'}
+                  </Text>
                 </View>
               </View>
             )}
@@ -611,23 +440,23 @@ export const LiveMatchScreen: React.FC<LiveMatchScreenProps> = ({ matchId, onBac
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Tournament</Text>
-                <Text style={styles.infoValue}>{match.tournament?.tournamentName}</Text>
+                <Text style={styles.infoValue}>{match.tournament?.tournamentName || 'Friendly / Bilateral'}</Text>
               </View>
               <View style={styles.infoDivider} />
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Venue</Text>
-                <Text style={styles.infoValue}>{match.venue?.venueName}, {match.venue?.city}</Text>
+                <Text style={styles.infoValue}>{match.venue?.venueName || 'Colombo, Sri Lanka'}{match.venue?.city ? `, ${match.venue.city}` : ''}</Text>
               </View>
               <View style={styles.infoDivider} />
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Toss</Text>
-                <Text style={styles.infoValue}>{match.homeTeam.teamName} won the toss & elected to bat</Text>
+                <Text style={styles.infoLabel}>Teams</Text>
+                <Text style={styles.infoValue}>{homeTeamName} vs {awayTeamName}</Text>
               </View>
               <View style={styles.infoDivider} />
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Live Streaming</Text>
                 <Text style={[styles.infoValue, { color: Colors.primaryDark, fontWeight: '700' }]}>
-                  ⚡ SportLK Live Gateway Active
+                  {isLiveConnected ? '⚡ SportLK Live Gateway Active' : 'Connecting to Live Gateway...'}
                 </Text>
               </View>
             </View>
@@ -704,54 +533,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: Colors.liveRed,
     letterSpacing: 0.5,
-  },
-  topActionBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: Colors.card,
-  },
-  sportChipContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  sportChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: Colors.surfaceSecondary,
-  },
-  sportChipActive: {
-    backgroundColor: Colors.primaryLight,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-  },
-  sportChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  sportChipTextActive: {
-    color: Colors.primaryDark,
-    fontWeight: '700',
-  },
-  simButton: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 16,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  simButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.white,
   },
   scrollContent: {
     flex: 1,
