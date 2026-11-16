@@ -34,7 +34,7 @@ const FALLBACK_JOIN_REQUESTS: TeamInvitation[] = [];
 const FALLBACK_CHALLENGES: TeamChallenge[] = [];
 
 export default function TeamsScreen({ onBack }: TeamsScreenProps) {
-  const { accessToken, userName, userEmail, userCity, userId } = useAuth();
+  const { accessToken, userId, userName, userEmail, userCity, roles } = useAuth();
 
   // Navigation & Sub-views
   const [mainTab, setMainTab] = useState<'my_teams' | 'browse' | 'challenges'>('my_teams');
@@ -67,6 +67,8 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
 
   // Form fields: Member & Role
   const [formMemberName, setFormMemberName] = useState('');
+  const [formMemberUserId, setFormMemberUserId] = useState('');
+  const [registeredPlayers, setRegisteredPlayers] = useState<Array<{ id: string; fullName: string; email: string }>>([]);
   const [formMemberRole, setFormMemberRole] = useState<TeamMemberRole>('SQUAD_PLAYER');
   const [formJersey, setFormJersey] = useState('');
 
@@ -75,6 +77,19 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
   const [formChallengeTargetId, setFormChallengeTargetId] = useState('');
   const [formChallengeVenue, setFormChallengeVenue] = useState('Colombo Oval');
   const [formChallengeDate, setFormChallengeDate] = useState('2026-11-25T15:00:00Z');
+
+  useEffect(() => {
+    if (!addMemberModal || formMemberName.trim().length < 2 || !accessToken) {
+      setRegisteredPlayers([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      teamService.searchRegisteredPlayers(formMemberName, accessToken)
+        .then(setRegisteredPlayers)
+        .catch(() => setRegisteredPlayers([]));
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [accessToken, addMemberModal, formMemberName]);
 
   // Load teams & related records
   const loadData = useCallback(async () => {
@@ -108,10 +123,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
   // Helper: check if logged-in user manages this team
   const isManagerOfTeam = (team: Team) => {
     return (
-      (Boolean(userId) && (team.managerId === userId || team.manager?.id === userId)) ||
-      team.managerId === userName ||
-      team.manager?.displayName === userName ||
-      (Boolean(userEmail) && team.manager?.email === userEmail)
+      Boolean(userId) && (team.managerId === userId || team.manager?.id === userId)
     );
   };
 
@@ -141,15 +153,22 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
 
   // ── 1. Create Team ─────────────────────────────────────────────────────────
   const handleCreateTeam = async () => {
+    if (!roles.includes('team_manager')) {
+      Alert.alert('Team Manager approval required', 'Apply for the Team Manager role and wait for approval before creating a team.');
+      return;
+    }
+    if (!accessToken || !userId) {
+      Alert.alert('Sign in required', 'Sign in again before creating a team.');
+      return;
+    }
     if (!formTeamName.trim()) {
       Alert.alert('Required', 'Please enter a valid team name');
       return;
     }
 
-    const managerIdToUse = userId || userName;
     const newTeam: Team = {
       id: `team-local-${Date.now()}`,
-      managerId: managerIdToUse,
+      managerId: userId,
       teamName: formTeamName.trim(),
       sportType: formSportType,
       primaryLocationCity: formCity.trim() || userCity || 'Colombo',
@@ -158,7 +177,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
       createdAt: new Date().toISOString().split('T')[0],
       playersCount: 1,
       manager: {
-        id: managerIdToUse,
+        id: userId,
         displayName: userName,
         email: userEmail,
       },
@@ -166,35 +185,31 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
         {
           id: `m-${Date.now()}`,
           teamId: `team-local-${Date.now()}`,
-          userId: managerIdToUse,
+          userId,
           memberRole: 'CAPTAIN',
           jerseyNumber: 1,
           joinedAt: new Date().toISOString().split('T')[0],
-          user: { id: managerIdToUse, displayName: userName, email: userEmail },
+          user: { id: userId, displayName: userName, email: userEmail },
         },
       ],
     };
 
     try {
-      if (accessToken) {
-        const created = await teamService.createTeam(
-          {
-            managerId: managerIdToUse,
-            teamName: newTeam.teamName,
-            sportType: newTeam.sportType,
-            primaryLocationCity: newTeam.primaryLocationCity || undefined,
-            teamBio: newTeam.teamBio || undefined,
-          },
-          accessToken,
-        );
-        if (created?.id) {
-          newTeam.id = created.id;
-          newTeam.managerId = created.managerId || managerIdToUse;
-        }
-      }
+      const created = await teamService.createTeam(
+        {
+          managerId: userId,
+          teamName: newTeam.teamName,
+          sportType: newTeam.sportType,
+          primaryLocationCity: newTeam.primaryLocationCity || undefined,
+          teamBio: newTeam.teamBio || undefined,
+        },
+        accessToken,
+      );
+      newTeam.id = created.id;
       await loadData();
-    } catch {
-      // Fallback local creation
+    } catch (error) {
+      Alert.alert('Team not created', error instanceof Error ? error.message : 'The backend could not create this team.');
+      return;
     }
 
     setTeams((prev) => [newTeam, ...prev.filter((t) => t.id !== newTeam.id)]);
@@ -239,39 +254,35 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
 
   // ── 2 & 4. Add Member to Roster ───────────────────────────────────────────
   const handleAddMember = async () => {
-    if (!selectedTeam || !formMemberName.trim()) {
-      Alert.alert('Required', 'Please enter player name or username');
+    if (!selectedTeam || !formMemberUserId) {
+      Alert.alert('Select a registered player', 'Search by name and select an active SportLK account.');
       return;
     }
 
     const newMember: TeamMember = {
       id: `m-${Date.now()}`,
       teamId: selectedTeam.id,
-      userId: formMemberName.trim(),
+      userId: formMemberUserId,
       memberRole: formMemberRole,
       jerseyNumber: formJersey ? parseInt(formJersey, 10) : undefined,
       joinedAt: new Date().toISOString().split('T')[0],
       user: {
-        id: formMemberName.trim(),
+        id: formMemberUserId,
         displayName: formMemberName.trim(),
-        email: `${formMemberName.trim().toLowerCase().replace(/\s+/g, '')}@sportlk.com`,
+        email: registeredPlayers.find((player) => player.id === formMemberUserId)?.email || '',
       },
     };
 
     try {
-      if (accessToken && !selectedTeam.id.startsWith('team-demo-')) {
-        await teamService.addTeamMember(
-          selectedTeam.id,
-          {
-            userId: newMember.userId,
-            memberRole: newMember.memberRole,
-            jerseyNumber: newMember.jerseyNumber || undefined,
-          },
-          accessToken,
-        );
-      }
-    } catch {
-      // Fallback
+      if (!accessToken || selectedTeam.id.startsWith('team-demo-')) throw new Error('This team is not connected to the backend.');
+      await teamService.addTeamMember(selectedTeam.id, {
+        userId: newMember.userId,
+        memberRole: newMember.memberRole,
+        jerseyNumber: newMember.jerseyNumber || undefined,
+      }, accessToken);
+    } catch (error) {
+      Alert.alert('Player not added', error instanceof Error ? error.message : 'The backend could not add this player.');
+      return;
     }
 
     const currentMembers = selectedTeam.members || [];
@@ -285,6 +296,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
     setTeams((prev) => prev.map((t) => (t.id === updatedTeam.id ? updatedTeam : t)));
     setAddMemberModal(false);
     setFormMemberName('');
+    setFormMemberUserId('');
     setFormJersey('');
     Alert.alert('Player Added', `${newMember.user?.displayName} has been added to the squad roster.`);
   };
@@ -581,9 +593,9 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
           )}
           <Text style={s.headerTitle}>Teams & Squads</Text>
         </View>
-        <TouchableOpacity style={s.createBtn} onPress={() => setCreateTeamModal(true)}>
+        {roles.includes('team_manager') && <TouchableOpacity style={s.createBtn} onPress={() => setCreateTeamModal(true)}>
           <Text style={s.createBtnText}>＋ Create Team</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>}
       </View>
 
       {/* ── Navigation Tabs ─────────────────────────────────────────────────── */}
@@ -627,9 +639,9 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
               <View style={s.emptyBox}>
                 <Text style={s.emptyTitle}>You haven't created a squad yet</Text>
                 <Text style={s.emptySub}>Build your sports team, recruit squad players, manage roster, and issue match challenges.</Text>
-                <TouchableOpacity style={s.primaryBtn} onPress={() => setCreateTeamModal(true)}>
+                {roles.includes('team_manager') && <TouchableOpacity style={s.primaryBtn} onPress={() => setCreateTeamModal(true)}>
                   <Text style={s.primaryBtnText}>Create Your First Team</Text>
-                </TouchableOpacity>
+                </TouchableOpacity>}
               </View>
             ) : (
               myTeams.map((team) => (
@@ -1215,9 +1227,20 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
               style={s.input}
               placeholder="e.g. Sanath Jayasuriya"
               value={formMemberName}
-              onChangeText={setFormMemberName}
+              onChangeText={(value) => {
+                setFormMemberName(value);
+                setFormMemberUserId('');
+              }}
               placeholderTextColor="#9CA3AF"
             />
+            {formMemberName.trim().length >= 2 && registeredPlayers.map((player) => (
+              <TouchableOpacity key={player.id} style={s.outlineActionBtn} onPress={() => {
+                setFormMemberUserId(player.id);
+                setFormMemberName(player.fullName);
+              }}>
+                <Text style={s.outlineActionText}>{player.fullName} · {player.email}</Text>
+              </TouchableOpacity>
+            ))}
 
             <Text style={s.inputLabel}>SQUAD ROLE</Text>
             <View style={s.chipGroup}>

@@ -10,10 +10,10 @@ import { apiRequest, AuthResponse } from '../api';
 import { Workspace } from '../types';
 
 type AuthState = {
-  userId: string;
   accessToken: string | undefined;
   refreshToken: string | undefined;
   userName: string;
+  userId: string;
   userEmail: string;
   userCity: string;
   roles: Workspace[];
@@ -166,10 +166,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        userId,
         accessToken,
         refreshToken,
         userName,
+        userId,
         userEmail,
         userCity,
         roles,
