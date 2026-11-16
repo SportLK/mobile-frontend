@@ -1,4 +1,4 @@
-export type SportType = 'CRICKET' | 'FOOTBALL' | 'BADMINTON' | 'BASKETBALL' | 'VOLLEYBALL';
+export type SportType = 'CRICKET' | 'FOOTBALL' | 'FUTSAL' | 'BADMINTON' | 'BASKETBALL' | 'VOLLEYBALL';
 
 export type TeamMemberRole = 'CAPTAIN' | 'VICE_CAPTAIN' | 'SQUAD_PLAYER';
 

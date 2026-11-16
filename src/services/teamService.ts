@@ -36,6 +36,10 @@ export const teamService = {
     return apiRequest<Team[]>(`/teams/manager/${managerId}`, {}, token);
   },
 
+  async getMyManagedTeams(token: string): Promise<Team[]> {
+    return apiRequest<Team[]>('/teams/mine', {}, token);
+  },
+
   async createTeam(payload: CreateTeamPayload, token?: string): Promise<Team> {
     return apiRequest<Team>(
       '/teams',
