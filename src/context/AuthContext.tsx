@@ -33,10 +33,10 @@ type AuthState = {
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [userId, setUserId] = useState<string>('');
   const [accessToken, setAccessToken] = useState<string | undefined>();
   const [refreshToken, setRefreshToken] = useState<string | undefined>();
-  const [userName, setUserName] = useState('');
-  const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('Player');
   const [userEmail, setUserEmail] = useState('');
   const [userCity, setUserCity] = useState('');
   const [roles, setRoles] = useState<Workspace[]>(['player']);
@@ -58,16 +58,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Fetch live user profile
           const profile = await apiRequest<{
             id: string;
-            displayName: string;
-            email: string;
-            roles: string[];
+            displayName?: string;
+            fullName?: string;
+            email?: string;
+            roles?: string[];
             city?: string | null;
           }>('/users/me', {}, token);
-          setUserName(profile.displayName || 'Player');
-          setUserId(profile.id);
+          setUserId(profile.id || '');
+          setUserName(profile.displayName || profile.fullName || 'Player');
           setUserEmail(profile.email || '');
           setUserCity(profile.city ?? '');
-          const filteredRoles = (profile.roles || []).filter(
+          const rawRoles = Array.isArray(profile.roles) ? profile.roles : [];
+          const filteredRoles = rawRoles.filter(
             (r): r is Workspace => r !== 'admin',
           );
           if (filteredRoles.length > 0) {
@@ -123,11 +125,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await storage.setItem('refresh_token', response.refreshToken);
         setAccessToken(response.accessToken);
         setRefreshToken(response.refreshToken);
-        setUserName(response.user.displayName);
-        setUserId(response.user.id);
-        setUserEmail(response.user.email);
+        setUserId(response.user.id || '');
+        const nameVal =
+          response.user.displayName ||
+          (response.user as any).fullName ||
+          name.trim() ||
+          'Player';
+        setUserName(nameVal);
+        setUserEmail(response.user.email || email.trim());
         setUserCity(response.user.city ?? '');
-        const filteredRoles = response.user.roles.filter(
+        const rawRoles = Array.isArray(response.user.roles) ? response.user.roles : [];
+        const filteredRoles = rawRoles.filter(
           (r): r is Workspace => r !== 'admin',
         );
         setRoles(filteredRoles.length > 0 ? filteredRoles : ['player']);
