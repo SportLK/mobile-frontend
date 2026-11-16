@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
+import { apiRequest } from '../../api';
 import { tournamentService } from '../../services/tournamentService';
 import { Tournament, OrganizerWorkspaceStats } from '../../types/tournament.types';
 import { COLORS } from '../../constants/colors';
@@ -37,6 +38,7 @@ export default function OrganizerWorkspaceScreen({
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<FilterTab>('ALL');
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [managerApplications, setManagerApplications] = useState<Array<{ id: string; organization: string; experience: string; user?: { fullName?: string; displayName?: string; email?: string } }>>([]);
   const [stats, setStats] = useState<OrganizerWorkspaceStats>({
     totalTournaments: 0,
     ongoingTournaments: 0,
@@ -50,6 +52,12 @@ export default function OrganizerWorkspaceScreen({
       setLoading(false);
       return;
     }
+    apiRequest<Array<{ id: string; justificationNotes?: string; user?: { fullName?: string; displayName?: string; email?: string } }>>('/role-applications/team-manager/pending', {}, accessToken)
+      .then((items) => setManagerApplications(items.map((item) => {
+        const [organization = '', ...experience] = (item.justificationNotes ?? '').split(' | ');
+        return { id: item.id, organization, experience: experience.join(' | '), user: item.user };
+      })))
+      .catch(() => setManagerApplications([]));
     try {
       const data = await tournamentService.getOrganizerWorkspace(accessToken);
       setStats(data.stats);
@@ -74,6 +82,19 @@ export default function OrganizerWorkspaceScreen({
       setRefreshing(false);
     }
   }, [accessToken]);
+
+  const reviewManagerApplication = async (id: string, status: 'approved' | 'rejected') => {
+    try {
+      await apiRequest(`/role-applications/${id}/team-manager-review`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      }, accessToken);
+      setManagerApplications((items) => items.filter((item) => item.id !== id));
+      Alert.alert(status === 'approved' ? 'Application approved' : 'Application declined', 'The applicant has been notified.');
+    } catch (error) {
+      Alert.alert('Could not review application', error instanceof Error ? error.message : 'Please try again.');
+    }
+  };
 
   useEffect(() => {
     loadWorkspaceData();
@@ -174,6 +195,25 @@ export default function OrganizerWorkspaceScreen({
       </View>
 
       {/* ── 2. KPI Metrics Grid ──────────────────────────────────────────── */}
+      <Text style={s.sectionHeader}>TEAM MANAGER APPLICATIONS ({managerApplications.length})</Text>
+      {managerApplications.length === 0 ? (
+        <Text style={s.emptyApplications}>No team manager applications are waiting for review.</Text>
+      ) : managerApplications.map((application) => (
+        <View key={application.id} style={s.applicationCard}>
+          <Text style={s.applicationName}>{application.user?.displayName || application.user?.fullName || 'Applicant'} · {application.organization}</Text>
+          {!!application.user?.email && <Text style={s.applicationMeta}>{application.user.email}</Text>}
+          <Text style={s.applicationExperience}>{application.experience}</Text>
+          <View style={s.applicationActions}>
+            <Pressable style={s.rejectApplication} onPress={() => reviewManagerApplication(application.id, 'rejected')}>
+              <Text style={s.rejectApplicationText}>Reject</Text>
+            </Pressable>
+            <Pressable style={s.approveApplication} onPress={() => reviewManagerApplication(application.id, 'approved')}>
+              <Text style={s.approveApplicationText}>Approve</Text>
+            </Pressable>
+          </View>
+        </View>
+      ))}
+
       <Text style={s.sectionHeader}>WORKSPACE OVERVIEW</Text>
       <View style={s.metricsGrid}>
         <View style={s.metricCard}>
@@ -464,6 +504,16 @@ const s = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: 10,
   },
+  emptyApplications: { marginBottom: 18, color: '#8A929A', fontSize: 12 },
+  applicationCard: { padding: 12, marginBottom: 10, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, backgroundColor: '#FFF' },
+  applicationName: { color: '#253347', fontSize: 13, fontWeight: '700' },
+  applicationMeta: { marginTop: 3, color: '#7B8793', fontSize: 11 },
+  applicationExperience: { marginTop: 8, color: '#586575', fontSize: 12, lineHeight: 17 },
+  applicationActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 10 },
+  rejectApplication: { paddingHorizontal: 13, paddingVertical: 8, borderWidth: 1, borderColor: '#F1C5C5', borderRadius: 7 },
+  rejectApplicationText: { color: '#B42318', fontSize: 12, fontWeight: '700' },
+  approveApplication: { paddingHorizontal: 13, paddingVertical: 8, borderRadius: 7, backgroundColor: '#047857' },
+  approveApplicationText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
   sectionSub: {
     fontSize: 12,
     color: '#6B7280',

@@ -202,7 +202,7 @@ export default function CreateTournamentScreen({ onBack, onCreateSuccess }: Prop
         `"${trimmedName}" is now open for registrations and live in the tournament directory.`,
         [
           {
-            text: 'View in Workspace',
+            text: 'Done',
             onPress: () => onCreateSuccess(created),
           },
         ],

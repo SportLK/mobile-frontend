@@ -1132,7 +1132,7 @@ export default function TeamsScreen({ onBack }: TeamsScreenProps) {
 
             <Text style={s.inputLabel}>SPORT TYPE *</Text>
             <View style={s.chipGroup}>
-              {(['CRICKET', 'FOOTBALL', 'BADMINTON', 'BASKETBALL', 'VOLLEYBALL'] as SportType[]).map((sp) => (
+              {(['CRICKET', 'FOOTBALL', 'FUTSAL', 'BADMINTON', 'BASKETBALL', 'VOLLEYBALL'] as SportType[]).map((sp) => (
                 <TouchableOpacity
                   key={sp}
                   style={[s.chip, formSportType === sp && s.chipActive]}

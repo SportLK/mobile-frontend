@@ -8,11 +8,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { tournamentService } from '../../services/tournamentService';
+import { teamService } from '../../services/teamService';
+import { Team } from '../../types/team.types';
 import {
   RegistrationStatus,
   Tournament,
@@ -49,10 +50,47 @@ export default function TournamentDetailScreen({
 
   // Team Registration Modal (for Team Managers)
   const [registerModalOpen, setRegisterModalOpen] = useState(false);
-  const [teamIdInput, setTeamIdInput] = useState('');
+  const [managerTeams, setManagerTeams] = useState<Team[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [loadingManagerTeams, setLoadingManagerTeams] = useState(false);
+  const [teamLoadError, setTeamLoadError] = useState('');
   const [registering, setRegistering] = useState(false);
 
   const isOrganizer = workspace === 'organizer' || roles.includes('organizer');
+  const canRegisterTeam = roles.includes('team_manager');
+
+  const loadManagerTeams = useCallback(async () => {
+    if (!accessToken) return;
+    setLoadingManagerTeams(true);
+    setTeamLoadError('');
+    try {
+      const teams = await teamService.getMyManagedTeams(accessToken);
+      const eligibleTeams = teams.filter(
+        (team) => team.status === 'ACTIVE'
+          && team.sportType === tournament.sportType
+          && !registrations.some((registration) => registration.teamId === team.id),
+      );
+      setManagerTeams(eligibleTeams);
+      setSelectedTeamId((current) => eligibleTeams.some((team) => team.id === current) ? current : '');
+    } catch (error) {
+      setManagerTeams([]);
+      setTeamLoadError(error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setLoadingManagerTeams(false);
+    }
+  }, [accessToken, registrations, tournament.sportType]);
+
+  useEffect(() => {
+    if (registerModalOpen) void loadManagerTeams();
+  }, [registerModalOpen, loadManagerTeams]);
+
+  const openRegisterModal = () => {
+    if (!accessToken || !canRegisterTeam) {
+      Alert.alert('Team manager access required', 'Only an approved team manager can register a team.');
+      return;
+    }
+    setRegisterModalOpen(true);
+  };
 
   // Load fresh details and registrations
   const loadData = useCallback(async () => {
@@ -140,9 +178,8 @@ export default function TournamentDetailScreen({
 
   // Handle Team Manager registering a team
   const handleRegisterTeam = async () => {
-    const trimmedTeamId = teamIdInput.trim();
-    if (!trimmedTeamId) {
-      Alert.alert('Team Required', 'Please enter your Team ID or select a team.');
+    if (!selectedTeamId) {
+      Alert.alert('Select a team', 'Choose one of your teams to register.');
       return;
     }
     if (!accessToken) {
@@ -151,13 +188,13 @@ export default function TournamentDetailScreen({
     }
     try {
       setRegistering(true);
-      await tournamentService.registerTeam(accessToken, tournament.id, trimmedTeamId);
+      await tournamentService.registerTeam(accessToken, tournament.id, selectedTeamId);
       Alert.alert(
         'Registration Submitted! 🎉',
-        'Your team registration is now pending confirmation by the tournament organizer.',
+        'Your team is confirmed for this tournament. No entry fee is required.',
+        [{ text: 'OK', onPress: () => setRegisterModalOpen(false) }],
       );
-      setRegisterModalOpen(false);
-      setTeamIdInput('');
+      setSelectedTeamId('');
       await loadData();
       if (onTournamentUpdated) onTournamentUpdated();
     } catch (err: any) {
@@ -227,10 +264,8 @@ export default function TournamentDetailScreen({
             </View>
             <View style={s.metricItem}>
               <Text style={s.metricIcon}>💰</Text>
-              <Text style={s.metricVal}>
-                {tournament.prizePool || `LKR ${(tournament.registrationFee || 0).toLocaleString()}`}
-              </Text>
-              <Text style={s.metricLbl}>Prize Pool / Fee</Text>
+              <Text style={s.metricVal}>{tournament.prizePool || '—'}</Text>
+              <Text style={s.metricLbl}>Prize Pool</Text>
             </View>
           </View>
         </View>
@@ -322,10 +357,10 @@ export default function TournamentDetailScreen({
               </Text>
 
               {/* Team Manager Registration Action */}
-              {tournament.tournamentStatus === 'OPEN_FOR_REGISTRATION' && (
+              {canRegisterTeam && tournament.tournamentStatus === 'OPEN_FOR_REGISTRATION' && (
                 <Pressable
                   style={s.registerTeamCta}
-                  onPress={() => setRegisterModalOpen(true)}
+                  onPress={openRegisterModal}
                 >
                   <Text style={s.registerTeamCtaText}>+ Register a Team Squad</Text>
                 </Pressable>
@@ -369,10 +404,10 @@ export default function TournamentDetailScreen({
                     : 'List of participating clubs and squads'}
                 </Text>
               </View>
-              {tournament.tournamentStatus === 'OPEN_FOR_REGISTRATION' && (
+              {canRegisterTeam && tournament.tournamentStatus === 'OPEN_FOR_REGISTRATION' && (
                 <Pressable
                   style={s.addTeamSmallBtn}
-                  onPress={() => setRegisterModalOpen(true)}
+                  onPress={openRegisterModal}
                 >
                   <Text style={s.addTeamSmallBtnText}>+ Register</Text>
                 </Pressable>
@@ -386,12 +421,11 @@ export default function TournamentDetailScreen({
                 <Text style={s.emptySubtitle}>
                   Team managers can register their squads while registration remains open.
                 </Text>
-                <Pressable
-                  style={s.emptyActionBtn}
-                  onPress={() => setRegisterModalOpen(true)}
-                >
-                  <Text style={s.emptyActionText}>Register First Team</Text>
-                </Pressable>
+                {canRegisterTeam && tournament.tournamentStatus === 'OPEN_FOR_REGISTRATION' && (
+                  <Pressable style={s.emptyActionBtn} onPress={openRegisterModal}>
+                    <Text style={s.emptyActionText}>Register First Team</Text>
+                  </Pressable>
+                )}
               </View>
             ) : (
               registrations.map((reg, index) => {
@@ -516,29 +550,43 @@ export default function TournamentDetailScreen({
               </Pressable>
             </View>
             <Text style={s.modalSubtitle}>
-              Enter your SportLK Team ID or Name to register for "{tournament.tournamentName}".
+              Select one of your active {tournament.sportType} teams for "{tournament.tournamentName}". No entry fee is required.
             </Text>
 
-            <Text style={s.modalLabel}>TEAM ID / SQUAD NAME *</Text>
-            <TextInput
-              style={s.modalInput}
-              placeholder="e.g. colombo-strikers-fc"
-              placeholderTextColor="#9CA3AF"
-              value={teamIdInput}
-              onChangeText={setTeamIdInput}
-            />
-
-            <View style={s.modalFeeRow}>
-              <Text style={s.modalFeeLabel}>Registration Entry Fee:</Text>
-              <Text style={s.modalFeeValue}>
-                LKR {(tournament.registrationFee || 0).toLocaleString()}
-              </Text>
-            </View>
+            <Text style={s.modalLabel}>YOUR ELIGIBLE TEAMS</Text>
+            {loadingManagerTeams ? (
+              <ActivityIndicator color="#10B981" style={s.teamListLoader} />
+            ) : teamLoadError ? (
+              <View style={s.teamLoadErrorBox}>
+                <Text style={s.noEligibleTeams}>{teamLoadError}</Text>
+                <Pressable onPress={() => void loadManagerTeams()}>
+                  <Text style={s.retryTeamsText}>Retry loading teams</Text>
+                </Pressable>
+              </View>
+            ) : managerTeams.length ? (
+              <View style={s.teamOptions}>
+                {managerTeams.map((team) => (
+                  <Pressable
+                    key={team.id}
+                    style={[s.teamOption, selectedTeamId === team.id && s.teamOptionSelected]}
+                    onPress={() => setSelectedTeamId(team.id)}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.teamOptionName}>{team.teamName}</Text>
+                      <Text style={s.teamOptionMeta}>{team.sportType} • {team.primaryLocationCity || 'Sri Lanka'}</Text>
+                    </View>
+                    <Text style={s.teamOptionRadio}>{selectedTeamId === team.id ? '●' : '○'}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <Text style={s.noEligibleTeams}>You have no active {tournament.sportType} teams to register.</Text>
+            )}
 
             <Pressable
-              style={[s.modalSubmitBtn, registering && s.btnDisabled]}
+              style={[s.modalSubmitBtn, (registering || loadingManagerTeams || !selectedTeamId) && s.btnDisabled]}
               onPress={handleRegisterTeam}
-              disabled={registering}
+              disabled={registering || loadingManagerTeams || !selectedTeamId}
             >
               {registering ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -1074,23 +1122,16 @@ const s = StyleSheet.create({
     color: '#111827',
     marginBottom: 12,
   },
-  modalFeeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    marginBottom: 14,
-  },
-  modalFeeLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  modalFeeValue: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#10B981',
-  },
+  teamListLoader: { marginVertical: 20 },
+  teamOptions: { maxHeight: 210, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, marginBottom: 14, overflow: 'hidden' },
+  teamOption: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  teamOptionSelected: { backgroundColor: '#ECFDF5' },
+  teamOptionName: { color: '#111827', fontSize: 13, fontWeight: '700' },
+  teamOptionMeta: { color: '#6B7280', fontSize: 10, marginTop: 3 },
+  teamOptionRadio: { color: '#059669', fontSize: 18, marginLeft: 10 },
+  noEligibleTeams: { color: '#6B7280', fontSize: 12, backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12, marginBottom: 14 },
+  teamLoadErrorBox: { marginBottom: 14 },
+  retryTeamsText: { color: '#047857', fontSize: 12, fontWeight: '700', textAlign: 'right', padding: 8 },
   modalSubmitBtn: {
     backgroundColor: '#10B981',
     borderRadius: 10,
