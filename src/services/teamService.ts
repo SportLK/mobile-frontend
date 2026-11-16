@@ -13,6 +13,10 @@ import {
 } from '../types/team.types';
 
 export const teamService = {
+  async searchRegisteredPlayers(search: string, token?: string): Promise<Array<{ id: string; fullName: string; email: string; city?: string | null }>> {
+    if (search.trim().length < 2) return [];
+    return apiRequest(`/teams/players?search=${encodeURIComponent(search.trim())}`, {}, token);
+  },
   // ── 1. Teams Management & Search ──────────────────────────────────────────
   async getTeams(params?: { sportType?: string; city?: string; search?: string }): Promise<Team[]> {
     const query = new URLSearchParams();
