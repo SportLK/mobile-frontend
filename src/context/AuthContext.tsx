@@ -13,6 +13,7 @@ type AuthState = {
   accessToken: string | undefined;
   refreshToken: string | undefined;
   userName: string;
+  userId: string;
   userEmail: string;
   userCity: string;
   roles: Workspace[];
@@ -35,6 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | undefined>();
   const [refreshToken, setRefreshToken] = useState<string | undefined>();
   const [userName, setUserName] = useState('');
+  const [userId, setUserId] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const [userCity, setUserCity] = useState('');
   const [roles, setRoles] = useState<Workspace[]>(['player']);
@@ -62,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             city?: string | null;
           }>('/users/me', {}, token);
           setUserName(profile.displayName || 'Player');
+          setUserId(profile.id);
           setUserEmail(profile.email || '');
           setUserCity(profile.city ?? '');
           const filteredRoles = (profile.roles || []).filter(
@@ -121,6 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAccessToken(response.accessToken);
         setRefreshToken(response.refreshToken);
         setUserName(response.user.displayName);
+        setUserId(response.user.id);
         setUserEmail(response.user.email);
         setUserCity(response.user.city ?? '');
         const filteredRoles = response.user.roles.filter(
@@ -146,6 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     storage.deleteItem('refresh_token');
     setAccessToken(undefined);
     setRefreshToken(undefined);
+    setUserId('');
     setAuthenticated(false);
     setAuthMode('login');
   }
@@ -156,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         accessToken,
         refreshToken,
         userName,
+        userId,
         userEmail,
         userCity,
         roles,
