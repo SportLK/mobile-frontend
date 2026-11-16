@@ -78,19 +78,26 @@ export default function MainApp() {
   // Modals
   const [composerOpen, setComposerOpen] = useState(false);
   const [applicationOpen, setApplicationOpen] = useState(false);
+  const [applicationSubmitting, setApplicationSubmitting] = useState(false);
   const [reportingPost, setReportingPost] = useState<FeedPost | null>(null);
   const [reportReason, setReportReason] = useState('Inappropriate content');
   const [commentingPost, setCommentingPost] = useState<string | null>(null);
+  const [newPostHeadline, setNewPostHeadline] = useState('');
   const [newPost, setNewPost] = useState('');
   const [commentText, setCommentText] = useState('');
   const [roleChoice, setRoleChoice] = useState<Exclude<Workspace, 'player'>>('team_manager');
   const [organization, setOrganization] = useState('');
+  const [selectedOrganizerId, setSelectedOrganizerId] = useState('');
+  const [availableOrganizers, setAvailableOrganizers] = useState<Array<{ id: string; organization: string; name: string }>>([]);
+  const [loadingOrganizers, setLoadingOrganizers] = useState(false);
+  const [organizerLoadError, setOrganizerLoadError] = useState('');
   const [experience, setExperience] = useState('');
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [profileNameDraft, setProfileNameDraft] = useState('');
   const [profileCityDraft, setProfileCityDraft] = useState('');
   const [organizerAppOpen, setOrganizerAppOpen] = useState(false);
   const [createTournamentOpen, setCreateTournamentOpen] = useState(false);
+  const [returnToOrganizerAfterCreate, setReturnToOrganizerAfterCreate] = useState(false);
   const [workspaceRefreshKey, setWorkspaceRefreshKey] = useState(0);
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [bracketTournament, setBracketTournament] = useState<Tournament | null>(null);
@@ -114,11 +121,29 @@ export default function MainApp() {
     }).format(new Date());
   }, []);
 
+  async function loadAvailableOrganizers() {
+    if (!accessToken) return;
+    setLoadingOrganizers(true);
+    setOrganizerLoadError('');
+    try {
+      const items = await apiRequest<Array<{ id: string; organization: string; name: string }>>('/role-applications/organizers', {}, accessToken);
+      setAvailableOrganizers(items);
+      setSelectedOrganizerId((current) => items.some((item) => item.id === current) ? current : items[0]?.id || '');
+    } catch (error) {
+      setAvailableOrganizers([]);
+      setOrganizerLoadError(error instanceof Error ? error.message : 'Could not load organizers.');
+    } finally {
+      setLoadingOrganizers(false);
+    }
+  }
+
   // Fetch live backend data when authenticated
   useEffect(() => {
     if (!accessToken) return;
 
-    apiRequest<Array<{ id: string; authorId: string; authorName?: string; body: string; sport?: string; likesCount: number; commentsCount: number; createdAt: string }>>('/community/posts', {}, accessToken)
+    void loadAvailableOrganizers();
+
+    apiRequest<Array<{ id: string; authorId: string; authorName?: string; headline?: string; body: string; sport?: string; likesCount: number; commentsCount: number; createdAt: string }>>('/community/posts', {}, accessToken)
       .then((items) => setPosts(items.map((item) => {
         const isMine = (userId && item.authorId === userId) || (item.authorId === userName);
         const authorName = item.authorName || (isMine ? userName : 'Community Athlete');
@@ -129,7 +154,9 @@ export default function MainApp() {
           community: item.sport ? `${item.sport} Community` : 'SportLK Community',
           ago: 'Recently',
           sport: item.sport ?? 'Community',
+          headline: item.headline ?? '',
           body: item.body,
+          isMine,
           likes: item.likesCount,
           comments: item.commentsCount,
           liked: false,
@@ -173,10 +200,10 @@ export default function MainApp() {
       }))))
       .catch(() => undefined);
 
-    apiRequest<Array<{ id: string; requestedRole: 'team_manager' | 'organizer'; status: 'pending' | 'approved' | 'rejected' }>>('/role-applications/mine', {}, accessToken)
+    apiRequest<Array<{ id: string; requestedRole: string; status: string }>>('/role-applications/mine', {}, accessToken)
       .then((items) => setApplications(items.map((item): RoleApplication => ({
-        role: item.requestedRole,
-        status: item.status === 'approved' ? 'Approved' : item.status === 'rejected' ? 'Declined' : 'Pending',
+        role: item.requestedRole.toLowerCase() === 'team_manager' ? 'team_manager' : 'organizer',
+        status: item.status.toUpperCase() === 'APPROVED' ? 'Approved' : item.status.toUpperCase() === 'REJECTED' ? 'Declined' : 'Pending',
       }))))
       .catch(() => undefined);
   }, [accessToken]);
@@ -192,8 +219,9 @@ export default function MainApp() {
   }
 
   async function publishPost() {
+    const headline = newPostHeadline.trim();
     const body = newPost.trim();
-    if (!body) return;
+    if (!headline || !body) return;
     const post: FeedPost = {
       id: `local-${Date.now()}`,
       author: userName || 'SportLK Player',
@@ -201,24 +229,53 @@ export default function MainApp() {
       community: 'Your sports community',
       ago: 'Just now',
       sport: interests[0] ?? 'Community',
+      headline,
       body,
+      isMine: true,
       likes: 0,
       comments: 0,
       liked: false,
     };
     setPosts((items) => [post, ...items]);
-    setNewPost('');
-    setComposerOpen(false);
 
     if (accessToken) {
       try {
-        await apiRequest('/community/posts', {
+        const saved = await apiRequest<{ id: string }>('/community/posts', {
           method: 'POST',
-          body: JSON.stringify({ body, sport: interests[0] ?? 'General' }),
+          body: JSON.stringify({ headline, body, sport: interests[0] ?? 'General' }),
         }, accessToken);
-      } catch {
-        // Kept locally
+        setPosts((items) => items.map((item) => item.id === post.id ? { ...item, id: saved.id } : item));
+        setNewPost('');
+        setNewPostHeadline('');
+        setComposerOpen(false);
+      } catch (error) {
+        setPosts((items) => items.filter((item) => item.id !== post.id));
+        Alert.alert('Post not published', error instanceof Error ? error.message : 'Please check your connection and try again.');
       }
+      return;
+    }
+    setNewPost('');
+    setNewPostHeadline('');
+    setComposerOpen(false);
+  }
+
+  async function deletePost(post: FeedPost) {
+    if (!post.isMine || !accessToken || post.id.startsWith('local-')) return;
+    try {
+      await apiRequest(`/community/posts/${post.id}`, { method: 'DELETE' }, accessToken);
+      setPosts((items) => items.filter((item) => item.id !== post.id));
+    } catch (error) {
+      Alert.alert('Could not delete post', error instanceof Error ? error.message : 'Please try again.');
+    }
+  }
+
+  function openTournamentCreator(fromOrganizer = false) {
+    setReturnToOrganizerAfterCreate(fromOrganizer);
+    if (fromOrganizer) {
+      setOrganizerWorkspaceOpen(false);
+      setTimeout(() => setCreateTournamentOpen(true), 500);
+    } else {
+      setCreateTournamentOpen(true);
     }
   }
 
@@ -255,26 +312,43 @@ export default function MainApp() {
   }
 
   async function submitApplication() {
-    if (!organization.trim() || experience.trim().length < 15) {
-      Alert.alert('A little more detail', 'Add your organization and at least a few sentences about your experience.');
+    if (!accessToken) {
+      Alert.alert('Sign in required', 'Sign in before sending an application.');
       return;
     }
-    if (accessToken) {
-      try {
-        await apiRequest('/role-applications', {
-          method: 'POST',
-          body: JSON.stringify({ requestedRole: roleChoice, organization: organization.trim(), experience: experience.trim() }),
-        }, accessToken);
-      } catch (error) {
-        Alert.alert('Application not sent', error instanceof Error ? error.message : 'The application could not sync yet.');
-        return;
-      }
+    if ((roleChoice === 'team_manager' && !selectedOrganizerId) || (roleChoice === 'organizer' && !organization.trim()) || experience.trim().length < 20) {
+      Alert.alert('More information needed', roleChoice === 'team_manager' && !selectedOrganizerId
+        ? 'Select the tournament organizer you want to apply to.'
+        : 'Add your organization and at least 20 characters about your experience.');
+      return;
+    }
+    setApplicationSubmitting(true);
+    try {
+      await apiRequest('/role-applications', {
+        method: 'POST',
+        body: JSON.stringify({
+          requestedRole: roleChoice,
+          ...(roleChoice === 'team_manager' ? { organizerId: selectedOrganizerId } : { organization: organization.trim() }),
+          experience: experience.trim(),
+        }),
+      }, accessToken);
+    } catch (error) {
+      Alert.alert('Application not sent', error instanceof Error ? error.message : 'The application could not sync yet.');
+      return;
+    } finally {
+      setApplicationSubmitting(false);
     }
     setApplications((items) => [{ role: roleChoice, status: 'Pending' }, ...items.filter((i) => i.role !== roleChoice)]);
-    setApplicationOpen(false);
     setOrganization('');
     setExperience('');
-    Alert.alert('Application Submitted', 'Your application is under review by the SportLK administrative team.');
+    setSelectedOrganizerId('');
+    Alert.alert(
+      'Application Submitted',
+      roleChoice === 'team_manager'
+        ? 'Your application was sent to the selected organizer for approval.'
+        : 'Your organizer application is under review by the SportLK administrative team.',
+      [{ text: 'OK', onPress: () => setApplicationOpen(false) }],
+    );
   }
 
   function markAllRead() {
@@ -363,6 +437,7 @@ export default function MainApp() {
             onCompose={() => setComposerOpen(true)}
             onLike={toggleLike}
             onReport={setReportingPost}
+            onDelete={deletePost}
             onComment={openComments}
             commentingPost={commentingPost}
             commentText={commentText}
@@ -445,6 +520,8 @@ export default function MainApp() {
         visible={composerOpen}
         value={newPost}
         onChange={setNewPost}
+        headline={newPostHeadline}
+        onHeadlineChange={setNewPostHeadline}
         onClose={() => setComposerOpen(false)}
         onPublish={publishPost}
         name={userName}
@@ -456,10 +533,17 @@ export default function MainApp() {
         setRole={setRoleChoice}
         organization={organization}
         setOrganization={setOrganization}
+        availableOrganizers={availableOrganizers}
+        loadingOrganizers={loadingOrganizers}
+        organizerLoadError={organizerLoadError}
+        onRetryLoadOrganizers={loadAvailableOrganizers}
+        selectedOrganizerId={selectedOrganizerId}
+        setSelectedOrganizerId={setSelectedOrganizerId}
         experience={experience}
         setExperience={setExperience}
         onClose={() => setApplicationOpen(false)}
         onSubmit={submitApplication}
+        submitting={applicationSubmitting}
       />
 
       <NameModal
@@ -501,10 +585,16 @@ export default function MainApp() {
 
       <Modal visible={createTournamentOpen} animationType="slide" onRequestClose={() => setCreateTournamentOpen(false)}>
         <CreateTournamentScreen
-          onBack={() => setCreateTournamentOpen(false)}
+          onBack={() => {
+            setCreateTournamentOpen(false);
+            if (returnToOrganizerAfterCreate) setTimeout(() => setOrganizerWorkspaceOpen(true), 500);
+            setReturnToOrganizerAfterCreate(false);
+          }}
           onCreateSuccess={() => {
             setCreateTournamentOpen(false);
             setWorkspaceRefreshKey((k) => k + 1);
+            if (returnToOrganizerAfterCreate) setTimeout(() => setOrganizerWorkspaceOpen(true), 500);
+            setReturnToOrganizerAfterCreate(false);
           }}
         />
       </Modal>
@@ -548,7 +638,7 @@ export default function MainApp() {
       <Modal visible={organizerWorkspaceOpen} animationType="slide" onRequestClose={() => setOrganizerWorkspaceOpen(false)}>
         <OrganizerWorkspaceScreen
           key={workspaceRefreshKey}
-          onCreateTournament={() => setCreateTournamentOpen(true)}
+          onCreateTournament={() => openTournamentCreator(true)}
           onSelectTournament={(t) => setSelectedTournament(t)}
           onManageBrackets={(t) => setBracketTournament(t)}
           onManageRegistrations={(t) => setSelectedTournament(t)}
@@ -799,6 +889,7 @@ function CommunityScreen({
   onCompose,
   onLike,
   onReport,
+  onDelete,
   onComment,
   commentingPost,
   commentText,
@@ -814,6 +905,7 @@ function CommunityScreen({
   onCompose: () => void;
   onLike: (id: string) => void;
   onReport: (post: FeedPost) => void;
+  onDelete: (post: FeedPost) => void;
   onComment: (id: string) => void;
   commentingPost: string | null;
   commentText: string;
@@ -872,6 +964,7 @@ function CommunityScreen({
                 index={index}
                 onLike={() => onLike(post.id)}
                 onReport={() => onReport(post)}
+                onDelete={() => onDelete(post)}
                 onComment={() => onComment(post.id)}
                 commenting={commentingPost === post.id}
                 commentText={commentText}
@@ -895,6 +988,7 @@ function PostCard({
   index,
   onLike,
   onReport,
+  onDelete,
   onComment,
   commenting,
   commentText,
@@ -906,6 +1000,7 @@ function PostCard({
   index: number;
   onLike: () => void;
   onReport: () => void;
+  onDelete?: () => void;
   onComment: () => void;
   commenting: boolean;
   commentText: string;
@@ -929,6 +1024,9 @@ function PostCard({
       </View>
       {menuOpen && (
         <View style={s.postMenu}>
+          {post.isMine && onDelete && <Pressable style={s.postMenuItem} onPress={() => { setMenuOpen(false); onDelete(); }}>
+            <Text style={s.postMenuText}>Delete my post</Text>
+          </Pressable>}
           <Pressable style={s.postMenuItem} onPress={() => { setMenuOpen(false); onReport(); }}>
             <Text style={s.postMenuText}>⚐  Report post</Text>
           </Pressable>
@@ -938,6 +1036,7 @@ function PostCard({
         <View style={s.sportTag}><Text style={s.sportTagDot}>● </Text><Text style={s.sportTagText}>{post.sport}</Text></View>
         <View style={s.postPublic}><Text style={s.postPublicText}>Community</Text></View>
       </View>
+      {post.headline ? <Text style={s.postHeadline}>{post.headline}</Text> : null}
       <Text style={s.postBody}>{post.body}</Text>
       <View style={s.postCounts}><Text>{post.likes} appreciations</Text><Text>{post.comments} comments</Text></View>
       <View style={s.postActions}>
@@ -1288,6 +1387,8 @@ function PageIntro({ eyebrow, title, subtitle }: { eyebrow: string; title: strin
 // ── Modals ───────────────────────────────────────────────────────────────────
 function ComposerModal({
   visible,
+  headline,
+  onHeadlineChange,
   value,
   onChange,
   onClose,
@@ -1295,6 +1396,8 @@ function ComposerModal({
   name,
 }: {
   visible: boolean;
+  headline: string;
+  onHeadlineChange: (v: string) => void;
   value: string;
   onChange: (v: string) => void;
   onClose: () => void;
@@ -1315,6 +1418,16 @@ function ComposerModal({
             <View style={s.quickAvatar}><Text style={s.quickAvatarText}>{(name || 'P')[0]}</Text></View>
             <View><Text style={s.sheetAuthorName}>{name || 'SportLK Player'}</Text><Text style={s.sheetAuthorSub}>Sharing with your sports community</Text></View>
           </View>
+          <Text style={s.inputLabel}>POST HEADER</Text>
+          <TextInput
+            style={s.textInput}
+            value={headline}
+            onChangeText={onHeadlineChange}
+            placeholder="Give your post a title"
+            placeholderTextColor={COLORS.placeholder}
+            maxLength={120}
+          />
+          <Text style={s.inputLabel}>POST BODY</Text>
           <TextInput
             style={s.composerInput}
             multiline
@@ -1326,7 +1439,7 @@ function ComposerModal({
             maxLength={2000}
           />
           <View style={s.composerTools}><Text style={s.composerTool}>●  General Community</Text><Text style={s.characterCount}>{value.length}/2000</Text></View>
-          <Pressable style={[s.primaryButton, !value.trim() && s.disabledButton]} disabled={!value.trim()} onPress={onPublish}>
+          <Pressable style={[s.primaryButton, (!headline.trim() || !value.trim()) && s.disabledButton]} disabled={!headline.trim() || !value.trim()} onPress={onPublish}>
             <Text style={s.primaryButtonText}>Post to community →</Text>
           </Pressable>
         </View>
@@ -1380,20 +1493,34 @@ function ApplicationModal({
   setRole,
   organization,
   setOrganization,
+  availableOrganizers,
+  loadingOrganizers,
+  organizerLoadError,
+  onRetryLoadOrganizers,
+  selectedOrganizerId,
+  setSelectedOrganizerId,
   experience,
   setExperience,
   onClose,
   onSubmit,
+  submitting,
 }: {
   visible: boolean;
   role: Exclude<Workspace, 'player'>;
   setRole: (r: Exclude<Workspace, 'player'>) => void;
   organization: string;
   setOrganization: (v: string) => void;
+  availableOrganizers: Array<{ id: string; organization: string; name: string }>;
+  loadingOrganizers: boolean;
+  organizerLoadError: string;
+  onRetryLoadOrganizers: () => void;
+  selectedOrganizerId: string;
+  setSelectedOrganizerId: (id: string) => void;
   experience: string;
   setExperience: (v: string) => void;
   onClose: () => void;
   onSubmit: () => void;
+  submitting: boolean;
 }) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -1401,11 +1528,12 @@ function ApplicationModal({
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={s.sheet}>
           <View style={s.sheetHandle} />
+          <ScrollView style={s.applicationFormScroll} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
           <View style={s.sheetHeader}>
             <View><Text style={s.sheetEyebrow}>TAKE THE NEXT STEP</Text><Text style={s.sheetTitle}>Apply for a role</Text></View>
             <Pressable onPress={onClose} style={s.closeButton}><Text>✕</Text></Pressable>
           </View>
-          <Text style={s.modalDescription}>Tell us about your background. Our team will review your application.</Text>
+          <Text style={s.modalDescription}>{role === 'team_manager' ? 'Select an organizer to receive and review your team manager application.' : 'Tell us about your background. The SportLK team will review your application.'}</Text>
           <Text style={s.inputLabel}>I'M APPLYING AS A</Text>
           <View style={s.roleChoiceRow}>
             {workspaces.slice(1).map((item) => (
@@ -1420,17 +1548,47 @@ function ApplicationModal({
               </Pressable>
             ))}
           </View>
-          <Text style={s.inputLabel}>TEAM OR ORGANIZATION</Text>
-          <TextInput style={s.textInput} value={organization} onChangeText={setOrganization} placeholder="e.g. Colombo Falcons CC" placeholderTextColor={COLORS.placeholder} />
+          {role === 'team_manager' ? (
+            <>
+              <Text style={s.inputLabel}>SELECT TOURNAMENT ORGANIZER</Text>
+              {loadingOrganizers ? (
+                <Text style={s.noOrganizers}>Loading organizers…</Text>
+              ) : availableOrganizers.length ? (
+                <ScrollView style={s.organizerChoices} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                  {availableOrganizers.map((item) => (
+                    <Pressable key={item.id} style={[s.organizerChoice, selectedOrganizerId === item.id && s.organizerChoiceSelected]} onPress={() => setSelectedOrganizerId(item.id)}>
+                      <Text style={[s.organizerChoiceName, selectedOrganizerId === item.id && s.organizerChoiceNameSelected]}>{item.organization || item.name}</Text>
+                      {item.organization && <Text style={s.organizerChoiceSub}>{item.name}</Text>}
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={s.noOrganizersWrap}>
+                  <Text style={s.noOrganizers}>{organizerLoadError || 'There are no approved organizers to apply to yet.'}</Text>
+                  {!!organizerLoadError && <Pressable onPress={onRetryLoadOrganizers}><Text style={s.organizerRetry}>Retry</Text></Pressable>}
+                </View>
+              )}
+            </>
+          ) : (
+            <>
+              <Text style={s.inputLabel}>ORGANIZATION</Text>
+              <TextInput style={s.textInput} value={organization} onChangeText={setOrganization} placeholder="e.g. Colombo Falcons CC" placeholderTextColor={COLORS.placeholder} />
+            </>
+          )}
           <Text style={s.inputLabel}>YOUR EXPERIENCE</Text>
           <TextInput style={[s.textInput, s.experienceInput]} value={experience} onChangeText={setExperience} placeholder="Share your sports coaching, team management, or tournament hosting experience..." placeholderTextColor={COLORS.placeholder} multiline textAlignVertical="top" />
           <View style={s.reviewNotice}>
             <Text style={s.reviewNoticeIcon}>ℹ️</Text>
             <Text style={s.reviewNoticeText}>If approved, this role will unlock new management features on your account.</Text>
           </View>
-          <Pressable style={s.primaryButton} onPress={onSubmit}>
-            <Text style={s.primaryButtonText}>Send application →</Text>
+          <Pressable
+            style={[s.primaryButton, (submitting || (role === 'team_manager' && (!selectedOrganizerId || loadingOrganizers))) && s.disabledButton]}
+            disabled={submitting || (role === 'team_manager' && (!selectedOrganizerId || loadingOrganizers))}
+            onPress={onSubmit}
+          >
+            <Text style={s.primaryButtonText}>{submitting ? 'Sending…' : 'Send application →'}</Text>
           </Pressable>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -1723,6 +1881,7 @@ const s = StyleSheet.create({
   sportTagText: { color: '#897342', fontSize: 10, fontWeight: '600' },
   postPublic: { paddingHorizontal: 7, paddingVertical: 4, borderRadius: 5, backgroundColor: '#F6F7F8' },
   postPublicText: { color: '#9099A2', fontSize: 10 },
+  postHeadline: { marginTop: 10, color: '#1F2937', fontSize: 15, lineHeight: 20, fontWeight: '800' },
   postBody: { marginTop: 10, color: '#374151', fontSize: 13, lineHeight: 19 },
   postCounts: { marginTop: 12, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#F0EFEC' },
   postActions: { paddingTop: 8, flexDirection: 'row', justifyContent: 'space-between' },
@@ -1944,6 +2103,7 @@ const s = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     maxHeight: '92%',
   },
+  applicationFormScroll: { flexShrink: 1 },
   nameEditCard: { width: '100%', maxWidth: 420, alignSelf: 'center', padding: 18, borderRadius: 16, backgroundColor: '#FFFFFF', margin: 20 },
   nameSaveButton: { marginTop: 14 },
   sheetHandle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 3, marginBottom: 12, backgroundColor: '#D1D5DB' },
@@ -1967,6 +2127,15 @@ const s = StyleSheet.create({
   roleChoiceActive: { borderColor: '#059669', backgroundColor: '#ECFDF5' },
   roleChoiceText: { color: '#4B5563', fontSize: 10, fontWeight: '600' },
   roleChoiceTextActive: { color: '#059669', fontWeight: '800' },
+  organizerChoices: { maxHeight: 132, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, backgroundColor: '#FFF' },
+  organizerChoice: { paddingHorizontal: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: '#F0F1F2' },
+  organizerChoiceSelected: { backgroundColor: '#ECFDF5' },
+  organizerChoiceName: { color: '#374151', fontSize: 11, fontWeight: '700' },
+  organizerChoiceNameSelected: { color: '#047857' },
+  organizerChoiceSub: { marginTop: 2, color: '#8B949E', fontSize: 9 },
+  noOrganizers: { padding: 10, color: '#8B949E', fontSize: 10, backgroundColor: '#F9FAFB', borderRadius: 7 },
+  noOrganizersWrap: { gap: 6 },
+  organizerRetry: { color: '#047857', fontSize: 10, fontWeight: '800', textAlign: 'right' },
   experienceInput: { height: 80, paddingTop: 10 },
   reviewNotice: { flexDirection: 'row', gap: 8, alignItems: 'center', padding: 10, marginTop: 10, marginBottom: 12, borderRadius: 8, backgroundColor: '#F3F4F6' },
   reviewNoticeIcon: { fontSize: 14 },

@@ -9,7 +9,9 @@ export type FeedPost = {
   community: string;
   ago: string;
   sport: string;
+  headline?: string;
   body: string;
+  isMine?: boolean;
   likes: number;
   comments: number;
   liked: boolean;
