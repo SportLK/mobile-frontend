@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,6 +18,8 @@ import { StatusBar } from 'expo-status-bar';
 import { apiRequest, AuthResponse } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../constants/colors';
+
+const LOGO_IMAGE = require('../../assets/logo.jpeg');
 import {
   sports,
   workspaces,
@@ -366,18 +369,17 @@ export default function MainApp() {
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <StatusBar style="dark" />
       <View style={s.appFrame}>
-        {/* Top App Header */}
-        <View style={s.header}>
-          <View style={s.brandRow}>
-            <View style={s.brandMark}>
-              <Text style={s.brandMarkText}>S</Text>
-              <View style={s.brandDot} />
+          {/* Top App Header with Official Logo */}
+          <View style={s.header}>
+            <View style={s.brandRow}>
+              <View style={s.brandMark}>
+                <Image source={LOGO_IMAGE} style={s.brandLogoImg} resizeMode="contain" />
+              </View>
+              <View>
+                <Text style={s.brandName}>Sport<Text style={s.brandGold}>LK</Text></Text>
+                <Text style={s.brandTag}>PERFORMANCE · UNITY · EXCELLENCE</Text>
+              </View>
             </View>
-            <View>
-              <Text style={s.brandName}>Sport<Text style={s.brandGold}>LK</Text></Text>
-              <Text style={s.brandTag}>YOUR GAME. YOUR PEOPLE.</Text>
-            </View>
-          </View>
           <View style={s.headerActions}>
             <Pressable
               style={s.activeWorkspace}
@@ -1660,18 +1662,20 @@ const s = StyleSheet.create({
   },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   brandMark: {
-    width: 34,
-    height: 34,
-    borderWidth: 1,
-    borderColor: '#D4B568',
+    width: 36,
+    height: 36,
     borderRadius: 10,
-    backgroundColor: '#F2EBD8',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+    overflow: 'hidden',
   },
-  brandMarkText: { color: COLORS.navy, fontSize: 19, fontWeight: '900', fontStyle: 'italic' },
-  brandDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#D4B568', position: 'absolute', right: 5, bottom: 5 },
+  brandLogoImg: {
+    width: '100%',
+    height: '100%',
+  },
   brandName: { color: COLORS.navy, fontSize: 18, fontWeight: '800', letterSpacing: -0.7 },
   brandGold: { color: '#B28A3D' },
   brandTag: { color: '#9A9588', fontSize: 7, letterSpacing: 1.1, marginTop: 1, fontWeight: '700' },
